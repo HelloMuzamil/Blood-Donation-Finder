@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BloodConnect — Find Donors Near You</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Google Fonts: Syne (display) + DM Sans (body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js" defer></script>
+</head>
+<body>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="navbar" id="navbar">
+  <div class="nav-container">
+    <!-- Logo -->
+    <a href="#" class="nav-logo" onclick="showPage('home')">
+      <span class="logo-drop">🩸</span>
+      <span class="logo-text">Blood<strong>Connect</strong></span>
+    </a>
+
+    <!-- Desktop Nav Links -->
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#" onclick="showPage('home')" class="nav-link active" data-page="home">Home</a></li>
+      <li><a href="#" onclick="showPage('search')" class="nav-link" data-page="search">Find Donors</a></li>
+      <li><a href="#" onclick="showPage('emergency')" class="nav-link" data-page="emergency">Emergency</a></li>
+      <li><a href="#" onclick="showPage('profile')" class="nav-link" data-page="profile">My Profile</a></li>
+      <li><a href="#" onclick="showPage('admin')" class="nav-link" data-page="admin">Admin</a></li>
+    </ul>
+
+    <!-- Right Actions -->
+    <div class="nav-actions">
+      <!-- Notification Bell -->
+      <button class="notif-btn" id="notifBtn" aria-label="Notifications">
+        <i class="ph-bold ph-bell"></i>
+        <span class="notif-badge" id="notifBadge">3</span>
+      </button>
+      <!-- Notification Panel -->
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-header">
+          <span>Notifications</span>
+          <button class="mark-read-btn" onclick="markAllRead()">Mark all read</button>
+        </div>
+        <ul class="notif-list" id="notifList"></ul>
+      </div>
+
+      <button class="btn-primary nav-cta" onclick="showPage('login')">
+        <i class="ph-bold ph-user-circle"></i> Login
+      </button>
+      <!-- Hamburger -->
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== HOME PAGE ===================== -->
+<section class="page active" id="page-home">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-bg-pattern"></div>
+    <div class="hero-content">
+      <div class="hero-badge"><i class="ph-bold ph-heartbeat"></i> Emergency? We're here 24/7</div>
+      <h1 class="hero-title">Save a Life.<br /><span class="accent">Donate Blood.</span></h1>
+      <p class="hero-subtitle">Connect with verified blood donors in your city within minutes. Every drop counts.</p>
+      <div class="hero-actions">
+        <button class="btn-primary btn-lg" onclick="showPage('search')">
+          <i class="ph-bold ph-magnifying-glass"></i> Find a Donor
+        </button>
+        <button class="btn-outline btn-lg" onclick="showPage('emergency')">
+          <i class="ph-bold ph-siren"></i> Emergency Request
+        </button>
+      </div>
+      <!-- Quick Search Bar -->
+      <div class="quick-search">
+        <select id="heroBlood" class="qs-input">
+          <option value="">Blood Group</option>
+          <option>A+</option><option>A-</option>
+          <option>B+</option><option>B-</option>
+          <option>O+</option><option>O-</option>
+          <option>AB+</option><option>AB-</option>
+        </select>
+        <input type="text" id="heroCity" placeholder="Enter your city…" class="qs-input" />
+        <button class="btn-primary qs-btn" onclick="quickSearch()">
+          <i class="ph-bold ph-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-card-float">
+        <div class="hcf-inner">
+          <div class="blood-drop-icon">🩸</div>
+          <div class="hcf-stat"><strong id="counterDonors">0</strong><span>Donors</span></div>
+          <div class="hcf-stat"><strong id="counterCities">0</strong><span>Cities</span></div>
+          <div class="hcf-stat"><strong id="counterLives">0</strong><span>Lives Saved</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blood Group Quick Select -->
+  <div class="blood-groups-section">
+    <h2 class="section-title">Search by Blood Group</h2>
+    <div class="blood-grid">
+      <button class="blood-chip" onclick="filterByBlood('A+')">A<sup>+</sup></button>
+      <button class="blood-chip" onclick="filterByBlood('A-')">A<sup>−</sup></button>
+      <button class="blood-chip" onclick="filterByBlood('B+')">B<sup>+</sup></button>
+      <button class="blood-chip" onclick="filterByBlood('B-')">B<sup>−</sup></button>
+      <button class="blood-chip" onclick="filterByBlood('O+')">O<sup>+</sup></button>
+      <button class="blood-chip" onclick="filterByBlood('O-')">O<sup>−</sup></button>
+      <button class="blood-chip" onclick="filterByBlood('AB+')">AB<sup>+</sup></button>
+      <button class="blood-chip" onclick="filterByBlood('AB-')">AB<sup>−</sup></button>
+    </div>
+  </div>
+
+  <!-- Featured Donors -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Available Donors</h2>
+      <a href="#" onclick="showPage('search')" class="view-all">View All <i class="ph-bold ph-arrow-right"></i></a>
+    </div>
+    <div class="donors-grid" id="homeDonorGrid"></div>
+  </div>
+
+  <!-- How It Works -->
+  <div class="section how-section">
+    <h2 class="section-title center">How It Works</h2>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <i class="ph-bold ph-magnifying-glass step-icon"></i>
+        <h3>Search</h3>
+        <p>Enter blood group and city to find available donors near you.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <i class="ph-bold ph-phone-call step-icon"></i>
+        <h3>Contact</h3>
+        <p>Call or email the donor directly from their profile card.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <i class="ph-bold ph-heart step-icon"></i>
+        <h3>Save a Life</h3>
+        <p>Meet the donor and receive the blood that saves a precious life.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">04</div>
+        <i class="ph-bold ph-star step-icon"></i>
+        <h3>Rate</h3>
+        <p>Rate the donor to help others trust and connect with them.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Band -->
+  <div class="stats-band">
+    <div class="stat-item"><strong>12,400+</strong><span>Registered Donors</span></div>
+    <div class="stat-item"><strong>98</strong><span>Cities Covered</span></div>
+    <div class="stat-item"><strong>4,800+</strong><span>Emergency Requests Fulfilled</span></div>
+    <div class="stat-item"><strong>4.8 ★</strong><span>Average Donor Rating</span></div>
+  </div>
+
+</section>
+
+<!-- ===================== SEARCH PAGE ===================== -->
+<section class="page" id="page-search">
+  <div class="page-header">
+    <h1>Find Blood Donors</h1>
+    <p>Search from our network of verified donors across the country</p>
+  </div>
+
+  <!-- Search Filters -->
+  <div class="search-bar-card">
+    <div class="search-row">
+      <div class="search-field">
+        <label><i class="ph-bold ph-drop"></i> Blood Group</label>
+        <select id="searchBlood" class="form-input">
+          <option value="">All Groups</option>
+          <option>A+</option><option>A-</option>
+          <option>B+</option><option>B-</option>
+          <option>O+</option><option>O-</option>
+          <option>AB+</option><option>AB-</option>
+        </select>
+      </div>
+      <div class="search-field">
+        <label><i class="ph-bold ph-map-pin"></i> City</label>
+        <input type="text" id="searchCity" placeholder="e.g. Lahore, Karachi…" class="form-input" />
+      </div>
+      <div class="search-field">
+        <label><i class="ph-bold ph-funnel"></i> Availability</label>
+        <select id="searchAvail" class="form-input">
+          <option value="">All</option>
+          <option value="available">Available</option>
+          <option value="unavailable">Not Available</option>
+        </select>
+      </div>
+      <button class="btn-primary search-go-btn" onclick="searchDonors()">
+        <i class="ph-bold ph-magnifying-glass"></i> Search
+      </button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-meta" id="resultsMeta"></div>
+  <div class="donors-grid" id="searchDonorGrid"></div>
+</section>
+
+<!-- ===================== EMERGENCY PAGE ===================== -->
+<section class="page" id="page-emergency">
+  <div class="emergency-hero">
+    <i class="ph-bold ph-siren emergency-siren"></i>
+    <h1>Emergency Blood Request</h1>
+    <p>Submit an urgent request. Matching donors will be notified immediately.</p>
+  </div>
+
+  <div class="emergency-layout">
+    <!-- Form -->
+    <div class="emergency-form-card">
+      <h2><i class="ph-bold ph-first-aid-kit"></i> Request Details</h2>
+      <form id="emergencyForm" onsubmit="submitEmergency(event)">
+        <div class="form-group">
+          <label>Patient Name *</label>
+          <input type="text" class="form-input" id="ePatient" placeholder="Full name" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Blood Group *</label>
+            <select class="form-input" id="eBlood" required>
+              <option value="">Select</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>O+</option><option>O-</option>
+              <option>AB+</option><option>AB-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Units Needed *</label>
+            <input type="number" class="form-input" id="eUnits" min="1" max="10" placeholder="e.g. 2" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Hospital / Location *</label>
+          <input type="text" class="form-input" id="eHospital" placeholder="Hospital name or address" required />
+        </div>
+        <div class="form-group">
+          <label>City *</label>
+          <input type="text" class="form-input" id="eCity" placeholder="Your city" required />
+        </div>
+        <div class="form-group">
+          <label>Contact Number *</label>
+          <input type="tel" class="form-input" id="ePhone" placeholder="+92 300 0000000" required />
+        </div>
+        <div class="form-group">
+          <label>Urgency Level</label>
+          <div class="urgency-selector">
+            <label class="urgency-opt">
+              <input type="radio" name="urgency" value="normal" checked />
+              <span class="urgency-label normal">Normal</span>
+            </label>
+            <label class="urgency-opt">
+              <input type="radio" name="urgency" value="urgent" />
+              <span class="urgency-label urgent">Urgent</span>
+            </label>
+            <label class="urgency-opt">
+              <input type="radio" name="urgency" value="critical" />
+              <span class="urgency-label critical">Critical</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Additional Notes</label>
+          <textarea class="form-input textarea" id="eNotes" placeholder="Any additional information…"></textarea>
+        </div>
+        <button type="submit" class="btn-primary btn-full btn-lg">
+          <i class="ph-bold ph-paper-plane-tilt"></i> Submit Emergency Request
+        </button>
+      </form>
+    </div>
+
+    <!-- Active Requests Panel -->
+    <div class="active-requests-panel">
+      <h2><i class="ph-bold ph-clock-countdown"></i> Active Requests</h2>
+      <div id="activeRequests"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== DONOR PROFILE PAGE ===================== -->
+<section class="page" id="page-profile">
+  <div class="profile-layout">
+    <!-- Profile Card -->
+    <div class="profile-card-big">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar">AK</div>
+        <div class="blood-badge-big">A+</div>
+      </div>
+      <h2 class="profile-name">Ahmed Khan</h2>
+      <p class="profile-city"><i class="ph-bold ph-map-pin"></i> Lahore, Punjab</p>
+
+      <!-- Availability Toggle -->
+      <div class="avail-row">
+        <span class="avail-label">Availability Status</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="availToggle" checked onchange="updateAvailStatus()" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="avail-status" id="availStatus">Available</span>
+      </div>
+
+      <!-- Stars Rating -->
+      <div class="rating-section">
+        <span class="rating-label">Donor Rating</span>
+        <div class="stars-display" id="profileStars"></div>
+        <span class="rating-count">(47 reviews)</span>
+      </div>
+
+      <!-- Trust Badge -->
+      <div class="trust-badge"><i class="ph-bold ph-seal-check"></i> Trusted Donor</div>
+
+      <!-- Stats -->
+      <div class="profile-stats">
+        <div class="pstat"><strong>23</strong><span>Donations</span></div>
+        <div class="pstat"><strong>4.9</strong><span>Avg Rating</span></div>
+        <div class="pstat"><strong>2 yrs</strong><span>Member</span></div>
+      </div>
+
+      <!-- Contact Buttons -->
+      <div class="contact-btns">
+        <button class="btn-call" onclick="callDonor('Ahmed Khan')">
+          <i class="ph-bold ph-phone-call"></i> Call Now
+        </button>
+        <button class="btn-email" onclick="emailDonor('ahmed@email.com')">
+          <i class="ph-bold ph-envelope"></i> Email
+        </button>
+        <button class="btn-whatsapp" onclick="whatsappDonor('+923001234567')">
+          <i class="ph-bold ph-whatsapp-logo"></i> WhatsApp
+        </button>
+      </div>
+    </div>
+
+    <!-- Profile Details -->
+    <div class="profile-details">
+      <div class="detail-card">
+        <h3><i class="ph-bold ph-user"></i> Personal Info</h3>
+        <div class="detail-row"><span>Full Name</span><strong>Ahmed Khan</strong></div>
+        <div class="detail-row"><span>Blood Group</span><strong class="red-text">A+</strong></div>
+        <div class="detail-row"><span>Age</span><strong>28 years</strong></div>
+        <div class="detail-row"><span>Gender</span><strong>Male</strong></div>
+        <div class="detail-row"><span>City</span><strong>Lahore</strong></div>
+        <div class="detail-row"><span>Last Donation</span><strong>Jan 15, 2025</strong></div>
+      </div>
+
+      <!-- Rate Donor -->
+      <div class="detail-card">
+        <h3><i class="ph-bold ph-star"></i> Rate This Donor</h3>
+        <p class="rate-desc">Had a donation from Ahmed? Share your experience.</p>
+        <div class="interactive-stars" id="interactiveStars">
+          <i class="ph-bold ph-star star-btn" data-val="1"></i>
+          <i class="ph-bold ph-star star-btn" data-val="2"></i>
+          <i class="ph-bold ph-star star-btn" data-val="3"></i>
+          <i class="ph-bold ph-star star-btn" data-val="4"></i>
+          <i class="ph-bold ph-star star-btn" data-val="5"></i>
+        </div>
+        <textarea class="form-input textarea mt-10" id="ratingFeedback" placeholder="Leave optional feedback…"></textarea>
+        <button class="btn-primary mt-10" onclick="submitRating()">
+          <i class="ph-bold ph-paper-plane-tilt"></i> Submit Rating
+        </button>
+      </div>
+
+      <!-- Donation History -->
+      <div class="detail-card">
+        <h3><i class="ph-bold ph-clock-counter-clockwise"></i> Request History</h3>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ADMIN PAGE ===================== -->
+<section class="page" id="page-admin">
+  <div class="admin-header">
+    <div>
+      <h1>Admin Dashboard</h1>
+      <p>Monitor activity and manage users</p>
+    </div>
+    <div class="admin-date" id="adminDate"></div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="admin-stats">
+    <div class="admin-stat-card red">
+      <i class="ph-bold ph-users"></i>
+      <div><strong>1,240</strong><span>Total Users</span></div>
+    </div>
+    <div class="admin-stat-card rose">
+      <i class="ph-bold ph-drop"></i>
+      <div><strong>874</strong><span>Active Donors</span></div>
+    </div>
+    <div class="admin-stat-card amber">
+      <i class="ph-bold ph-siren"></i>
+      <div><strong>32</strong><span>Active Requests</span></div>
+    </div>
+    <div class="admin-stat-card green">
+      <i class="ph-bold ph-check-circle"></i>
+      <div><strong>4,810</strong><span>Requests Fulfilled</span></div>
+    </div>
+  </div>
+
+  <!-- Admin Tables -->
+  <div class="admin-tables">
+    <!-- Recent Users -->
+    <div class="admin-table-card">
+      <div class="table-header">
+        <h3>Recent Users</h3>
+        <button class="btn-sm-outline">Export</button>
+      </div>
+      <table class="admin-table">
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>City</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody id="adminUsersTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Active Requests -->
+    <div class="admin-table-card">
+      <div class="table-header">
+        <h3>Emergency Requests</h3>
+        <button class="btn-sm-outline">Filter</button>
+      </div>
+      <table class="admin-table">
+        <thead>
+          <tr><th>Patient</th><th>Blood</th><th>City</th><th>Urgency</th><th>Status</th></tr>
+        </thead>
+        <tbody id="adminRequestsTable"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== LOGIN/REGISTER PAGE ===================== -->
+<section class="page" id="page-login">
+  <div class="auth-container">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <span class="logo-drop big">🩸</span>
+        <h2>BloodConnect</h2>
+        <p>Join thousands of donors saving lives every day.</p>
+      </div>
+      <ul class="auth-perks">
+        <li><i class="ph-bold ph-check-circle"></i> Search donors instantly</li>
+        <li><i class="ph-bold ph-check-circle"></i> Emergency blood requests</li>
+        <li><i class="ph-bold ph-check-circle"></i> Verified donor profiles</li>
+        <li><i class="ph-bold ph-check-circle"></i> 24/7 support system</li>
+      </ul>
+    </div>
+
+    <div class="auth-right">
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')">Login</button>
+        <button class="auth-tab" onclick="switchTab('register')">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <form class="auth-form" id="loginForm" onsubmit="handleLogin(event)">
+        <h3>Welcome Back</h3>
+        <div class="form-group">
+          <label>Email Address</label>
+          <div class="input-icon-wrap">
+            <i class="ph-bold ph-envelope"></i>
+            <input type="email" class="form-input icon-input" placeholder="you@example.com" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-icon-wrap">
+            <i class="ph-bold ph-lock"></i>
+            <input type="password" class="form-input icon-input" id="loginPass" placeholder="••••••••" required />
+            <button type="button" class="eye-btn" onclick="togglePass('loginPass')">
+              <i class="ph-bold ph-eye" id="loginEye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-row space-between">
+          <label class="checkbox-label">
+            <input type="checkbox" /> Remember me
+          </label>
+          <a href="#" class="forgot-link">Forgot password?</a>
+        </div>
+        <button type="submit" class="btn-primary btn-full">
+          <i class="ph-bold ph-sign-in"></i> Login
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form class="auth-form hidden" id="registerForm" onsubmit="handleRegister(event)">
+        <h3>Create Account</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>First Name</label>
+            <input type="text" class="form-input" placeholder="Ahmed" required />
+          </div>
+          <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" class="form-input" placeholder="Khan" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <div class="input-icon-wrap">
+            <i class="ph-bold ph-envelope"></i>
+            <input type="email" class="form-input icon-input" placeholder="you@example.com" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Blood Group</label>
+            <select class="form-input" required>
+              <option value="">Select</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>O+</option><option>O-</option>
+              <option>AB+</option><option>AB-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>City</label>
+            <input type="text" class="form-input" placeholder="Lahore" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" class="form-input" placeholder="+92 300 0000000" required />
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select class="form-input" required>
+            <option value="donor">Donor</option>
+            <option value="requester">Requester</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-icon-wrap">
+            <i class="ph-bold ph-lock"></i>
+            <input type="password" class="form-input icon-input" id="regPass" placeholder="••••••••" required />
+            <button type="button" class="eye-btn" onclick="togglePass('regPass')">
+              <i class="ph-bold ph-eye" id="regEye"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary btn-full">
+          <i class="ph-bold ph-user-plus"></i> Create Account
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TOAST ===================== -->
+<div class="toast" id="toast"></div>
+
+<!-- ===================== MODAL ===================== -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()" id="modalBox"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
