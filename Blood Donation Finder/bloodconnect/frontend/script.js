@@ -1,117 +1,71 @@
 /**
  * BloodConnect — script.js
- * All interactivity: page routing, donor data, search, forms, UI components
+ * Full API-connected frontend logic
  */
-
 'use strict';
 
 /* ================================================================
-   DUMMY DATA — Donors
+   CONFIG
    ================================================================ */
-const donors = [
-  { id: 1, name: 'Ahmed Khan',      initials: 'AK', blood: 'A+',  city: 'Lahore',    phone: '+92-300-1234567', email: 'ahmed@email.com',   available: true,  rating: 4.9, reviews: 47, trusted: true,  donations: 23 },
-  { id: 2, name: 'Sara Malik',      initials: 'SM', blood: 'O-',  city: 'Karachi',   phone: '+92-321-2345678', email: 'sara@email.com',    available: true,  rating: 4.7, reviews: 31, trusted: true,  donations: 15 },
-  { id: 3, name: 'Bilal Raza',      initials: 'BR', blood: 'B+',  city: 'Islamabad', phone: '+92-333-3456789', email: 'bilal@email.com',   available: false, rating: 4.2, reviews: 18, trusted: false, donations: 9  },
-  { id: 4, name: 'Ayesha Noor',     initials: 'AN', blood: 'AB+', city: 'Lahore',    phone: '+92-311-4567890', email: 'ayesha@email.com',  available: true,  rating: 5.0, reviews: 62, trusted: true,  donations: 34 },
-  { id: 5, name: 'Usman Tariq',     initials: 'UT', blood: 'O+',  city: 'Faisalabad',phone: '+92-345-5678901', email: 'usman@email.com',   available: true,  rating: 4.5, reviews: 22, trusted: false, donations: 11 },
-  { id: 6, name: 'Zara Ahmed',      initials: 'ZA', blood: 'A-',  city: 'Multan',    phone: '+92-303-6789012', email: 'zara@email.com',    available: false, rating: 4.0, reviews: 8,  trusted: false, donations: 5  },
-  { id: 7, name: 'Hamza Sheikh',    initials: 'HS', blood: 'B-',  city: 'Karachi',   phone: '+92-315-7890123', email: 'hamza@email.com',   available: true,  rating: 4.8, reviews: 39, trusted: true,  donations: 21 },
-  { id: 8, name: 'Fatima Zahra',    initials: 'FZ', blood: 'AB-', city: 'Islamabad', phone: '+92-322-8901234', email: 'fatima@email.com',  available: true,  rating: 4.6, reviews: 27, trusted: true,  donations: 16 },
-  { id: 9, name: 'Omar Farooq',     initials: 'OF', blood: 'O+',  city: 'Lahore',    phone: '+92-344-9012345', email: 'omar@email.com',    available: false, rating: 3.8, reviews: 12, trusted: false, donations: 7  },
-  { id:10, name: 'Nadia Hussain',   initials: 'NH', blood: 'A+',  city: 'Rawalpindi',phone: '+92-300-0123456', email: 'nadia@email.com',   available: true,  rating: 4.4, reviews: 19, trusted: false, donations: 10 },
-  { id:11, name: 'Kamran Ali',      initials: 'KA', blood: 'B+',  city: 'Peshawar',  phone: '+92-312-1234560', email: 'kamran@email.com',  available: true,  rating: 4.7, reviews: 33, trusted: true,  donations: 18 },
-  { id:12, name: 'Hina Baig',       initials: 'HB', blood: 'O-',  city: 'Quetta',    phone: '+92-330-2345671', email: 'hina@email.com',    available: true,  rating: 4.3, reviews: 14, trusted: false, donations: 8  },
-];
+const API_BASE = 'http://localhost:5000/api';
 
 /* ================================================================
-   DUMMY DATA — Notifications
+   AUTH STATE
    ================================================================ */
-const notifications = [
-  { id: 1, msg: 'New emergency request: O+ blood needed in Lahore', time: '2 min ago', read: false },
-  { id: 2, msg: 'Sara Malik rated you ★★★★★ — Excellent donor!', time: '1 hour ago', read: false },
-  { id: 3, msg: 'Your donation request has been fulfilled.', time: '3 hours ago', read: false },
-  { id: 4, msg: 'Reminder: You are eligible to donate again after Jan 2025.', time: '1 day ago', read: true },
-  { id: 5, msg: 'New donor registered near you: B+ in Karachi.', time: '2 days ago', read: true },
-];
+let currentUser  = null;
+let authToken    = localStorage.getItem('bc_token') || null;
+
+/** Return JWT header object or empty object */
+function authHeaders() {
+  return authToken ? { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+}
 
 /* ================================================================
-   DUMMY DATA — Emergency Requests
+   API HELPER
    ================================================================ */
-const activeRequests = [
-  { patient: 'Ali Hassan',   blood: 'O+',  city: 'Lahore',    urgency: 'critical', timer: '01:23:10' },
-  { patient: 'Maria Anwar',  blood: 'A-',  city: 'Karachi',   urgency: 'urgent',   timer: '02:45:33' },
-  { patient: 'Tariq Mehmood',blood: 'B+',  city: 'Islamabad', urgency: 'normal',   timer: '05:12:00' },
-];
-
-/* ================================================================
-   DUMMY DATA — Admin Users
-   ================================================================ */
-const adminUsers = [
-  { name: 'Ahmed Khan',    role: 'donor',     city: 'Lahore',    status: 'active'   },
-  { name: 'Sara Malik',    role: 'donor',     city: 'Karachi',   status: 'active'   },
-  { name: 'John Admin',    role: 'admin',     city: 'Islamabad', status: 'active'   },
-  { name: 'Bilal Raza',    role: 'requester', city: 'Faisalabad',status: 'inactive' },
-  { name: 'Ayesha Noor',   role: 'donor',     city: 'Lahore',    status: 'active'   },
-  { name: 'Omar Farooq',   role: 'requester', city: 'Multan',    status: 'active'   },
-];
-
-/* ================================================================
-   DUMMY DATA — Admin Requests
-   ================================================================ */
-const adminRequests = [
-  { patient: 'Ali Hassan',    blood: 'O+', city: 'Lahore',    urgency: 'critical', status: 'pending'   },
-  { patient: 'Maria Anwar',   blood: 'A-', city: 'Karachi',   urgency: 'urgent',   status: 'fulfilled' },
-  { patient: 'Raza Shah',     blood: 'B+', city: 'Islamabad', urgency: 'normal',   status: 'expired'   },
-  { patient: 'Nida Mehmood',  blood: 'AB+',city: 'Peshawar',  urgency: 'urgent',   status: 'pending'   },
-  { patient: 'Tariq Hussain', blood: 'O-', city: 'Quetta',    urgency: 'critical', status: 'pending'   },
-];
-
-/* ================================================================
-   DUMMY DATA — Donation History (Profile page)
-   ================================================================ */
-const donationHistory = [
-  { blood: 'A+', city: 'Lahore',    date: 'Jan 15, 2025', status: 'completed' },
-  { blood: 'A+', city: 'Faisalabad',date: 'Aug 10, 2024', status: 'completed' },
-  { blood: 'A+', city: 'Lahore',    date: 'Mar 05, 2024', status: 'completed' },
-  { blood: 'A+', city: 'Karachi',   date: 'Nov 22, 2023', status: 'expired'   },
-];
+async function api(endpoint, options = {}) {
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      headers: authHeaders(),
+      ...options
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Request failed');
+    return data;
+  } catch (err) {
+    throw err;
+  }
+}
 
 /* ================================================================
    PAGE ROUTER
    ================================================================ */
-/**
- * Show the requested page and update the nav active state.
- * @param {string} pageId - The page identifier string
- */
 function showPage(pageId) {
-  // Hide all pages
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  // Show target
   const target = document.getElementById('page-' + pageId);
   if (target) target.classList.add('active');
 
-  // Update nav active link
   document.querySelectorAll('.nav-link').forEach(l => {
     l.classList.toggle('active', l.dataset.page === pageId);
   });
 
-  // Close mobile menu
   document.getElementById('navLinks').classList.remove('open');
   document.getElementById('hamburger').classList.remove('open');
-
-  // Scroll top
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // Page-specific init
-  if (pageId === 'home')      initHome();
-  if (pageId === 'search')    initSearch();
-  if (pageId === 'admin')     initAdmin();
-  if (pageId === 'profile')   initProfile();
-  if (pageId === 'emergency') initEmergency();
+  // Page-specific inits
+  const inits = {
+    home:      initHome,
+    search:    initSearch,
+    emergency: initEmergency,
+    profile:   initProfile,
+    admin:     initAdmin
+  };
+  if (inits[pageId]) inits[pageId]();
 }
 
 /* ================================================================
-   HAMBURGER TOGGLE
+   HAMBURGER
    ================================================================ */
 document.getElementById('hamburger').addEventListener('click', function () {
   this.classList.toggle('open');
@@ -119,127 +73,235 @@ document.getElementById('hamburger').addEventListener('click', function () {
 });
 
 /* ================================================================
-   NOTIFICATION PANEL
+   AUTH — Login / Register / Logout
    ================================================================ */
-/**
- * Render notifications into the panel and toggle its visibility
- */
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginSubmitBtn');
+  const email    = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPass').value;
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
+
+  try {
+    const data = await api('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+
+    authToken   = data.token;
+    currentUser = data.user;
+    localStorage.setItem('bc_token', authToken);
+    localStorage.setItem('bc_user',  JSON.stringify(currentUser));
+
+    updateAuthUI();
+    showToast(`✅ Welcome back, ${currentUser.first_name}!`, 'success');
+    setTimeout(() => showPage('home'), 600);
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph-bold ph-sign-in"></i> Login';
+  }
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  const btn = document.getElementById('regSubmitBtn');
+  const body = {
+    first_name:  document.getElementById('regFirst').value,
+    last_name:   document.getElementById('regLast').value,
+    email:       document.getElementById('regEmail').value,
+    password:    document.getElementById('regPass').value,
+    blood_group: document.getElementById('regBlood').value,
+    city:        document.getElementById('regCity').value,
+    phone:       document.getElementById('regPhone').value,
+    role:        document.getElementById('regRole').value
+  };
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
+
+  try {
+    const data = await api('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+
+    authToken   = data.token;
+    currentUser = data.user;
+    localStorage.setItem('bc_token', authToken);
+    localStorage.setItem('bc_user',  JSON.stringify(currentUser));
+
+    updateAuthUI();
+    showToast(`🎉 Account created! Welcome, ${currentUser.first_name}!`, 'success');
+    setTimeout(() => showPage('home'), 600);
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph-bold ph-user-plus"></i> Create Account';
+  }
+}
+
+function logout() {
+  authToken   = null;
+  currentUser = null;
+  localStorage.removeItem('bc_token');
+  localStorage.removeItem('bc_user');
+  updateAuthUI();
+  showToast('👋 Logged out successfully.', 'info');
+  showPage('home');
+}
+
+function updateAuthUI() {
+  const loginBtn  = document.getElementById('loginBtn');
+  const userMenu  = document.getElementById('userMenu');
+  const nameEl    = document.getElementById('userNameDisplay');
+  const adminLink = document.querySelector('.admin-link');
+
+  if (currentUser) {
+    loginBtn.classList.add('hidden');
+    userMenu.classList.remove('hidden');
+    nameEl.textContent = `${currentUser.first_name} ${currentUser.last_name}`;
+    if (adminLink) adminLink.style.display = currentUser.role === 'admin' ? '' : 'none';
+  } else {
+    loginBtn.classList.remove('hidden');
+    userMenu.classList.add('hidden');
+    if (adminLink) adminLink.style.display = 'none';
+  }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+  });
+  document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+}
+
+function togglePass(inputId, eyeId) {
+  const input = document.getElementById(inputId);
+  const eye   = document.getElementById(eyeId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    eye.classList.replace('ph-eye', 'ph-eye-slash');
+  } else {
+    input.type = 'password';
+    eye.classList.replace('ph-eye-slash', 'ph-eye');
+  }
+}
+
+/* ================================================================
+   NOTIFICATION SYSTEM
+   ================================================================ */
 document.getElementById('notifBtn').addEventListener('click', function (e) {
   e.stopPropagation();
-  const panel = document.getElementById('notifPanel');
-  panel.classList.toggle('open');
-  renderNotifications();
+  document.getElementById('notifPanel').classList.toggle('open');
+  if (currentUser) loadNotifications();
 });
 
-// Close panel when clicking elsewhere
 document.addEventListener('click', () => {
   document.getElementById('notifPanel').classList.remove('open');
 });
 
-function renderNotifications() {
-  const list = document.getElementById('notifList');
+async function loadNotifications() {
+  if (!authToken) return;
+  try {
+    const data = await api('/notifications');
+    renderNotifications(data.notifications, data.unread_count);
+  } catch {}
+}
+
+function renderNotifications(notifications, unreadCount) {
+  const list  = document.getElementById('notifList');
+  const badge = document.getElementById('notifBadge');
+
+  badge.textContent = unreadCount;
+  badge.classList.toggle('hidden', unreadCount === 0);
+
+  if (!notifications || notifications.length === 0) {
+    list.innerHTML = '<li class="notif-empty">No notifications yet</li>';
+    return;
+  }
+
   list.innerHTML = notifications.map(n => `
-    <li class="notif-item ${n.read ? '' : 'unread'}" onclick="readNotif(${n.id})">
-      <div class="notif-dot" style="${n.read ? 'background:var(--gray-200)' : ''}"></div>
+    <li class="notif-item ${n.is_read ? '' : 'unread'}" onclick="readNotif(${n.id})">
+      <div class="notif-dot" style="${n.is_read ? 'background:var(--gray-200)' : ''}"></div>
       <div>
-        <div class="notif-text">${n.msg}</div>
-        <div class="notif-time">${n.time}</div>
+        <div class="notif-text">${n.message}</div>
+        <div class="notif-time">${formatTime(n.created_at)}</div>
       </div>
     </li>
   `).join('');
-  updateBadge();
 }
 
-function readNotif(id) {
-  const notif = notifications.find(n => n.id === id);
-  if (notif) notif.read = true;
-  renderNotifications();
+async function readNotif(id) {
+  try {
+    await api(`/notifications/${id}/read`, { method: 'PUT' });
+    loadNotifications();
+  } catch {}
 }
 
-function markAllRead() {
-  notifications.forEach(n => n.read = true);
-  renderNotifications();
-}
-
-function updateBadge() {
-  const unread = notifications.filter(n => !n.read).length;
-  const badge = document.getElementById('notifBadge');
-  badge.textContent = unread;
-  badge.classList.toggle('hidden', unread === 0);
+async function markAllRead() {
+  try {
+    await api('/notifications/read-all', { method: 'PUT' });
+    loadNotifications();
+    showToast('All notifications marked as read.', 'info');
+  } catch {}
 }
 
 /* ================================================================
-   STAR RATING UTILITIES
+   HOME PAGE
    ================================================================ */
-/**
- * Returns HTML string for a star display (filled + empty)
- * @param {number} rating - e.g. 4.7
- * @returns {string} HTML
- */
-function buildStarsHTML(rating) {
-  const full  = Math.floor(rating);
-  const empty = 5 - full;
-  return `
-    ${'<i class="ph-fill ph-star star-filled"></i>'.repeat(full)}
-    ${'<i class="ph-bold ph-star star-empty"></i>'.repeat(empty)}
-    <span class="rating-val">${rating.toFixed(1)}</span>
-  `;
+async function initHome() {
+  try {
+    const data = await api('/donors/stats');
+    const stats = data.stats;
+
+    // Animate Hero section counters
+    animateCounter('counterDonors', stats.total_donors);
+    animateCounter('counterCities', stats.total_cities);
+    animateCounter('counterLives',  stats.fulfilled_requests);
+
+    // Animate Bottom stats-band counters
+    animateCounter('bandDonors',    stats.total_donors);
+    animateCounter('bandCities',    stats.total_cities);
+    animateCounter('bandFulfilled', stats.fulfilled_requests);
+
+    const ratingEl = document.getElementById('bandRating');
+    if (ratingEl) {
+      ratingEl.textContent = `${parseFloat(stats.avg_rating || 0).toFixed(1)} ★`;
+    }
+  } catch (err) {
+    console.error('Failed to load stats:', err);
+    // Fallback animation in case API fails
+    animateCounter('counterDonors', 0);
+    animateCounter('counterCities', 0);
+    animateCounter('counterLives',  0);
+  }
+
+  await loadHomeDonors();
 }
 
-/* ================================================================
-   DONOR CARD BUILDER
-   ================================================================ */
-/**
- * Build and return a donor card element
- * @param {object} d - Donor data object
- * @returns {HTMLElement}
- */
-function createDonorCard(d) {
-  const card = document.createElement('div');
-  card.className = 'donor-card';
-  card.innerHTML = `
-    <div class="donor-card-top">
-      <div class="donor-avatar">${d.initials}</div>
-      <div class="donor-info">
-        <div class="donor-name">${d.name}</div>
-        <div class="donor-city"><i class="ph-bold ph-map-pin"></i> ${d.city}</div>
-      </div>
-      <div class="blood-badge">${d.blood}</div>
-    </div>
-    <div class="donor-card-meta">
-      <span class="avail-chip ${d.available ? 'available' : 'unavailable'}">
-        ${d.available ? 'Available' : 'Not Available'}
-      </span>
-      ${d.trusted ? '<span class="trusted-chip"><i class="ph-bold ph-seal-check"></i> Trusted</span>' : ''}
-    </div>
-    <div class="stars">${buildStarsHTML(d.rating)}<span style="font-size:.75rem;color:var(--gray-400);margin-left:4px">(${d.reviews})</span></div>
-    <div class="donor-card-actions">
-      <button class="btn-call" onclick="callDonor('${d.name}')"><i class="ph-bold ph-phone-call"></i> Call</button>
-      <button class="btn-email" onclick="emailDonor('${d.email}')"><i class="ph-bold ph-envelope"></i> Email</button>
-      <button class="donor-detail-btn" onclick="showPage('profile')"><i class="ph-bold ph-arrow-right"></i></button>
-    </div>
-  `;
-  return card;
-}
-
-/* ================================================================
-   HOME PAGE INIT
-   ================================================================ */
-function initHome() {
-  // Render first 6 donors in home grid
+async function loadHomeDonors() {
   const grid = document.getElementById('homeDonorGrid');
-  grid.innerHTML = '';
-  donors.slice(0, 6).forEach(d => grid.appendChild(createDonorCard(d)));
-
-  // Animate counters
-  animateCounter('counterDonors', 1240);
-  animateCounter('counterCities', 98);
-  animateCounter('counterLives', 4810);
+  grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading donors…</p></div>';
+  try {
+    const data = await api('/donors?availability=1');
+    grid.innerHTML = '';
+    const donors = data.donors.slice(0, 6);
+    if (donors.length === 0) {
+      grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--gray-400);padding:40px">No donors found.</p>';
+      return;
+    }
+    donors.forEach(d => grid.appendChild(createDonorCard(d)));
+  } catch (err) {
+    grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--gray-400);padding:40px">Could not load donors. Make sure backend is running.<br><small>${err.message}</small></p>`;
+  }
 }
 
-/**
- * Animate a numeric counter element up to target value
- */
 function animateCounter(id, target) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -252,314 +314,538 @@ function animateCounter(id, target) {
   }, 25);
 }
 
-/* ================================================================
-   QUICK SEARCH (Home hero bar)
-   ================================================================ */
 function quickSearch() {
   const blood = document.getElementById('heroBlood').value;
   const city  = document.getElementById('heroCity').value;
-  // Pass values to search page
   document.getElementById('searchBlood').value = blood;
   document.getElementById('searchCity').value  = city;
   showPage('search');
   searchDonors();
 }
 
-/* ================================================================
-   BLOOD GROUP FILTER (Home chips)
-   ================================================================ */
 function filterByBlood(group) {
   document.getElementById('searchBlood').value = group;
   document.getElementById('searchCity').value  = '';
+  document.getElementById('searchAvail').value = '';
+  document.querySelectorAll('.blood-chip').forEach(b => {
+    b.classList.toggle('selected', b.textContent.trim().replace('−', '-') === group);
+  });
   showPage('search');
   searchDonors();
-  // Highlight selected chip
-  document.querySelectorAll('.blood-chip').forEach(b => {
-    b.classList.toggle('selected', b.textContent.trim().replace('−','-') === group.replace('-','-'));
-  });
 }
 
 /* ================================================================
-   SEARCH PAGE INIT & SEARCH LOGIC
+   SEARCH PAGE
    ================================================================ */
 function initSearch() {
-  searchDonors(); // Show all by default
+  searchDonors();
 }
 
-function searchDonors() {
-  const blood = document.getElementById('searchBlood').value.toLowerCase();
-  const city  = document.getElementById('searchCity').value.toLowerCase().trim();
+async function searchDonors() {
+  const blood = document.getElementById('searchBlood').value;
+  const city  = document.getElementById('searchCity').value.trim();
   const avail = document.getElementById('searchAvail').value;
-
-  let results = donors.filter(d => {
-    const matchBlood = !blood || d.blood.toLowerCase() === blood;
-    const matchCity  = !city  || d.city.toLowerCase().includes(city);
-    const matchAvail = !avail || (avail === 'available' ? d.available : !d.available);
-    return matchBlood && matchCity && matchAvail;
-  });
 
   const grid = document.getElementById('searchDonorGrid');
   const meta = document.getElementById('resultsMeta');
-  grid.innerHTML = '';
-  meta.textContent = `${results.length} donor${results.length !== 1 ? 's' : ''} found`;
+  grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Searching…</p></div>';
+  meta.textContent = '';
 
-  if (results.length === 0) {
-    grid.innerHTML = `
-      <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray-400)">
-        <i class="ph-bold ph-drop-slash" style="font-size:3rem;display:block;margin-bottom:12px"></i>
-        No donors found for that search. Try different filters.
+  const params = new URLSearchParams();
+  if (blood) params.set('blood', blood);
+  if (city)  params.set('city', city);
+  if (avail) params.set('availability', avail);
+
+  try {
+    const data = await api(`/donors?${params}`);
+    grid.innerHTML = '';
+    meta.textContent = `${data.count} donor${data.count !== 1 ? 's' : ''} found`;
+
+    if (data.count === 0) {
+      grid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray-400)">
+          <i class="ph-bold ph-drop-slash" style="font-size:3rem;display:block;margin-bottom:12px"></i>
+          No donors found for that search. Try different filters.
+        </div>`;
+      return;
+    }
+
+    data.donors.forEach(d => grid.appendChild(createDonorCard(d)));
+  } catch (err) {
+    grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--red);padding:40px">Error: ${err.message}</p>`;
+  }
+}
+
+/* ================================================================
+   DONOR CARD BUILDER
+   ================================================================ */
+function createDonorCard(d) {
+  const card = document.createElement('div');
+  card.className = 'donor-card';
+  const initials = d.initials || `${d.first_name[0]}${d.last_name[0]}`.toUpperCase();
+  const name     = d.name || `${d.first_name} ${d.last_name}`;
+  const phone    = d.phone || '';
+
+  card.innerHTML = `
+    <div class="donor-card-top">
+      <div class="donor-avatar">${initials}</div>
+      <div class="donor-info">
+        <div class="donor-name">${name}</div>
+        <div class="donor-city"><i class="ph-bold ph-map-pin"></i> ${d.city}</div>
+      </div>
+      <div class="blood-badge">${d.blood_group}</div>
+    </div>
+    <div class="donor-card-meta">
+      <span class="avail-chip ${d.availability ? 'available' : 'unavailable'}">
+        ${d.availability ? 'Available' : 'Not Available'}
+      </span>
+      ${d.is_trusted ? '<span class="trusted-chip"><i class="ph-bold ph-seal-check"></i> Trusted</span>' : ''}
+    </div>
+    <div class="stars">
+      ${buildStarsHTML(parseFloat(d.avg_rating) || 0)}
+    </div>
+    <div class="donor-card-actions">
+      ${phone ? `<a class="btn-call" href="tel:${phone}"><i class="ph-bold ph-phone-call"></i> Call</a>` : ''}
+      <button class="btn-email" onclick="emailDonor('${d.email}')"><i class="ph-bold ph-envelope"></i> Email</button>
+      <button class="donor-detail-btn" onclick="openDonorModal(${d.id})" title="View profile"><i class="ph-bold ph-arrow-right"></i></button>
+    </div>
+  `;
+  return card;
+}
+
+/* ================================================================
+   DONOR MODAL — Full Profile View
+   ================================================================ */
+async function openDonorModal(donorId) {
+  showModal('<div class="loading-spinner" style="padding:40px"><div class="spinner"></div><p>Loading profile…</p></div>');
+
+  try {
+    const data = await api(`/donors/${donorId}`);
+    const d = data.donor;
+    const name = d.name || `${d.first_name} ${d.last_name}`;
+    const initials = d.initials || `${d.first_name[0]}${d.last_name[0]}`.toUpperCase();
+
+    const reviewsHTML = data.ratings.length > 0
+      ? data.ratings.map(r => `
+          <div style="padding:8px 0;border-bottom:1px solid var(--gray-50)">
+            <div style="display:flex;align-items:center;gap:6px;font-size:.8rem">
+              <strong>${r.rater_name}</strong>
+              <span style="color:var(--amber)">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+            </div>
+            ${r.feedback ? `<p style="font-size:.78rem;color:var(--gray-500);margin-top:3px">${r.feedback}</p>` : ''}
+          </div>
+        `).join('')
+      : '<p style="font-size:.82rem;color:var(--gray-400)">No reviews yet.</p>';
+
+    document.getElementById('modalBox').innerHTML = `
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--red),var(--rose));color:white;font-family:var(--font-display);font-size:1.4rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 10px">${initials}</div>
+        <h3 style="font-family:var(--font-display);font-size:1.3rem;font-weight:800">${name}</h3>
+        <p style="color:var(--gray-400);font-size:.85rem"><i class="ph-bold ph-map-pin"></i> ${d.city}</p>
+        <div style="margin:8px 0">${buildStarsHTML(parseFloat(d.avg_rating) || 0)}</div>
+        ${d.is_trusted ? '<span class="trusted-chip" style="margin:0 auto"><i class="ph-bold ph-seal-check"></i> Trusted Donor</span>' : ''}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:.85rem">
+        <div style="background:var(--gray-50);border-radius:8px;padding:10px">
+          <div style="color:var(--gray-400);font-size:.72rem;margin-bottom:2px">BLOOD GROUP</div>
+          <strong style="color:var(--red);font-size:1.1rem">${d.blood_group}</strong>
+        </div>
+        <div style="background:var(--gray-50);border-radius:8px;padding:10px">
+          <div style="color:var(--gray-400);font-size:.72rem;margin-bottom:2px">DONATIONS</div>
+          <strong style="font-size:1.1rem">${d.total_donations}</strong>
+        </div>
+        <div style="background:var(--gray-50);border-radius:8px;padding:10px">
+          <div style="color:var(--gray-400);font-size:.72rem;margin-bottom:2px">STATUS</div>
+          <span class="avail-chip ${d.availability ? 'available' : 'unavailable'}" style="font-size:.78rem">${d.availability ? 'Available' : 'Not Available'}</span>
+        </div>
+        <div style="background:var(--gray-50);border-radius:8px;padding:10px">
+          <div style="color:var(--gray-400);font-size:.72rem;margin-bottom:2px">MEMBER SINCE</div>
+          <strong style="font-size:.82rem">${new Date(d.created_at).getFullYear()}</strong>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+        ${d.phone ? `<a class="btn-call" href="tel:${d.phone}" style="flex:1;justify-content:center"><i class="ph-bold ph-phone-call"></i> ${d.phone}</a>` : ''}
+        <button class="btn-email" onclick="emailDonor('${d.email}')" style="flex:1;justify-content:center"><i class="ph-bold ph-envelope"></i> Email</button>
+        ${d.phone ? `<button class="btn-whatsapp" onclick="whatsappDonor('${d.phone}')" style="flex:1;justify-content:center"><i class="ph-bold ph-whatsapp-logo"></i> WhatsApp</button>` : ''}
+      </div>
+
+      <div style="margin-bottom:20px">
+        <h4 style="font-size:.85rem;font-weight:700;color:var(--gray-600);margin-bottom:10px">RECENT REVIEWS</h4>
+        ${reviewsHTML}
+      </div>
+
+      ${currentUser && currentUser.id !== d.id ? `
+        <div style="border-top:1px solid var(--gray-100);padding-top:16px">
+          <h4 style="font-size:.85rem;font-weight:700;color:var(--gray-600);margin-bottom:10px">RATE THIS DONOR</h4>
+          <div id="modalStars" style="display:flex;gap:6px;margin-bottom:8px">
+            ${[1,2,3,4,5].map(v => `<i class="ph-bold ph-star star-btn" data-val="${v}" style="font-size:1.4rem;color:var(--gray-300);cursor:pointer" onclick="setModalRating(${v},${d.id})"></i>`).join('')}
+          </div>
+          <textarea id="modalFeedback" class="form-input textarea" style="min-height:60px" placeholder="Optional feedback…"></textarea>
+          <button class="btn-primary btn-full mt-10" onclick="submitModalRating(${d.id})"><i class="ph-bold ph-star"></i> Submit Rating</button>
+        </div>
+      ` : ''}
+
+      <button onclick="closeModal()" style="width:100%;margin-top:12px;padding:10px;border-radius:8px;background:var(--gray-100);color:var(--gray-600);font-weight:600;font-size:.85rem">Close</button>
+    `;
+  } catch (err) {
+    document.getElementById('modalBox').innerHTML = `<p style="text-align:center;padding:20px;color:var(--red)">Error: ${err.message}</p><button onclick="closeModal()" class="btn-outline btn-full" style="margin-top:12px">Close</button>`;
+  }
+}
+
+let modalSelectedRating = 0;
+function setModalRating(val, donorId) {
+  modalSelectedRating = val;
+  document.querySelectorAll('#modalStars .star-btn').forEach((s, i) => {
+    s.style.color = i < val ? '#f59e0b' : 'var(--gray-300)';
+  });
+}
+
+async function submitModalRating(donorId) {
+  if (!currentUser) { showToast('Please login to rate donors.', 'error'); return; }
+  if (modalSelectedRating === 0) { showToast('Please select a star rating.', 'error'); return; }
+  const feedback = document.getElementById('modalFeedback').value;
+  try {
+    const data = await api('/ratings', {
+      method: 'POST',
+      body: JSON.stringify({ donor_id: donorId, rating: modalSelectedRating, feedback })
+    });
+    showToast(`⭐ ${data.message}`, 'success');
+    closeModal();
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+  }
+}
+
+/* ================================================================
+   STARS HTML
+   ================================================================ */
+function buildStarsHTML(rating) {
+  const full  = Math.floor(rating);
+  const empty = 5 - full;
+  return `
+    ${'<i class="ph-fill ph-star star-filled"></i>'.repeat(full)}
+    ${'<i class="ph-bold ph-star star-empty"></i>'.repeat(empty)}
+    <span class="rating-val">${rating > 0 ? rating.toFixed(1) : 'N/A'}</span>
+  `;
+}
+
+/* ================================================================
+   EMERGENCY PAGE
+   ================================================================ */
+async function initEmergency() {
+  loadActiveRequests();
+
+  // Show login warning if not logged in
+  const submitBtn  = document.getElementById('emergencySubmitBtn');
+  const loginMsg   = document.getElementById('emergencyLoginMsg');
+  if (!currentUser) {
+    submitBtn.style.display  = 'none';
+    loginMsg.style.display   = 'block';
+  } else {
+    submitBtn.style.display  = '';
+    loginMsg.style.display   = 'none';
+  }
+}
+
+async function loadActiveRequests() {
+  const container = document.getElementById('activeRequests');
+  container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading…</p></div>';
+  try {
+    const data = await api('/requests/active');
+    if (data.count === 0) {
+      container.innerHTML = '<p style="text-align:center;color:var(--gray-400);padding:24px;font-size:.875rem">No active requests right now.</p>';
+      return;
+    }
+    container.innerHTML = data.requests.map(r => `
+      <div class="req-card ${r.urgency}">
+        <div class="req-card-top">
+          <div class="req-blood">${r.blood_group}</div>
+          <span class="req-urgency ${r.urgency}">${r.urgency}</span>
+        </div>
+        <div class="req-city"><i class="ph-bold ph-map-pin"></i>${r.patient_name} • ${r.city}</div>
+        <div class="req-city" style="font-size:.75rem"><i class="ph-bold ph-hospital"></i> ${r.hospital || 'Location not specified'}</div>
+        <div style="margin:6px 0">
+          <a href="tel:${r.phone}" class="btn-call" style="font-size:.72rem;padding:5px 10px"><i class="ph-bold ph-phone"></i> ${r.phone}</a>
+        </div>
+        <div class="req-timer"><i class="ph-bold ph-clock-countdown"></i> Expires in ${r.timer}</div>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = `<p style="color:var(--red);font-size:.85rem;padding:12px">Failed to load: ${err.message}</p>`;
+  }
+}
+
+async function submitEmergency(e) {
+  e.preventDefault();
+  if (!currentUser) { showToast('Please login to submit a request.', 'error'); return; }
+
+  const btn = document.getElementById('emergencySubmitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
+
+  const body = {
+    patient_name: document.getElementById('ePatient').value,
+    blood_group:  document.getElementById('eBlood').value,
+    units_needed: document.getElementById('eUnits').value,
+    hospital:     document.getElementById('eHospital').value,
+    city:         document.getElementById('eCity').value,
+    phone:        document.getElementById('ePhone').value,
+    urgency:      document.querySelector('input[name="urgency"]:checked').value,
+    notes:        document.getElementById('eNotes').value
+  };
+
+  try {
+    const data = await api('/requests', { method: 'POST', body: JSON.stringify(body) });
+    showToast(`🚨 ${data.message}`, 'success');
+    document.getElementById('emergencyForm').reset();
+    loadActiveRequests();
+    if (currentUser) loadNotifications();
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Submit Emergency Request';
+  }
+}
+
+/* ================================================================
+   PROFILE PAGE
+   ================================================================ */
+async function initProfile() {
+  const container = document.getElementById('profileContent');
+
+  if (!currentUser) {
+    container.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:80px 24px">
+        <i class="ph-bold ph-user-circle" style="font-size:4rem;color:var(--gray-300);display:block;margin-bottom:16px"></i>
+        <h3 style="font-family:var(--font-display);font-size:1.4rem;margin-bottom:8px">Login to view your profile</h3>
+        <p style="color:var(--gray-400);margin-bottom:20px">You need to be logged in to access your profile.</p>
+        <button class="btn-primary btn-lg" onclick="showPage('login')"><i class="ph-bold ph-sign-in"></i> Login Now</button>
       </div>`;
     return;
   }
 
-  results.forEach(d => grid.appendChild(createDonorCard(d)));
-}
+  container.innerHTML = '<div class="loading-spinner full"><div class="spinner"></div><p>Loading profile…</p></div>';
 
-/* ================================================================
-   EMERGENCY PAGE INIT
-   ================================================================ */
-function initEmergency() {
-  const container = document.getElementById('activeRequests');
-  container.innerHTML = activeRequests.map(r => `
-    <div class="req-card ${r.urgency}">
-      <div class="req-card-top">
-        <div class="req-blood">${r.blood}</div>
-        <span class="req-urgency ${r.urgency}">${r.urgency}</span>
+  try {
+    const data = await api('/donors/profile/me');
+    const p    = data.profile;
+    const name = p.name || `${p.first_name} ${p.last_name}`;
+    const initials = p.initials || `${p.first_name[0]}${p.last_name[0]}`.toUpperCase();
+    const memberYears = Math.max(1, new Date().getFullYear() - new Date(p.created_at).getFullYear());
+
+    const historyHTML = data.history.length > 0
+      ? data.history.map(h => `
+          <div class="history-item">
+            <div>
+              <strong>${h.blood_group}</strong> — ${h.city}
+              <div style="font-size:.75rem;color:var(--gray-400);margin-top:2px">${h.patient_name} · ${formatDate(h.created_at)}</div>
+            </div>
+            <span class="history-status ${h.status}">${h.status}</span>
+          </div>
+        `).join('')
+      : '<p style="font-size:.85rem;color:var(--gray-400);text-align:center;padding:16px">No request history yet.</p>';
+
+    container.className = 'profile-layout';
+    container.innerHTML = `
+      <!-- Profile Card -->
+      <div class="profile-card-big">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar">${initials}</div>
+          <div class="blood-badge-big">${p.blood_group}</div>
+        </div>
+        <h2 class="profile-name">${name}</h2>
+        <p class="profile-city"><i class="ph-bold ph-map-pin"></i> ${p.city}</p>
+
+        <div class="avail-row">
+          <span class="avail-label">Availability</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="availToggle" ${p.availability ? 'checked' : ''} onchange="updateAvailStatus()" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="avail-status ${p.availability ? '' : 'offline'}" id="availStatus">
+            ${p.availability ? 'Available' : 'Not Available'}
+          </span>
+        </div>
+
+        <div class="rating-section">
+          <span class="rating-label">Donor Rating</span>
+          <div class="stars-display">${buildStarsHTML(parseFloat(p.avg_rating) || 0)}</div>
+        </div>
+
+        ${p.is_trusted ? '<div class="trust-badge"><i class="ph-bold ph-seal-check"></i> Trusted Donor</div>' : ''}
+
+        <div class="profile-stats">
+          <div class="pstat"><strong>${p.total_donations}</strong><span>Donations</span></div>
+          <div class="pstat"><strong>${parseFloat(p.avg_rating).toFixed(1)}</strong><span>Rating</span></div>
+          <div class="pstat"><strong>${memberYears}yr${memberYears > 1 ? 's' : ''}</strong><span>Member</span></div>
+        </div>
+
+        <div class="contact-btns">
+          ${p.phone ? `<a class="btn-call" href="tel:${p.phone}"><i class="ph-bold ph-phone-call"></i> ${p.phone}</a>` : ''}
+          <button class="btn-email" onclick="emailDonor('${p.email}')"><i class="ph-bold ph-envelope"></i> Email</button>
+          ${p.phone ? `<button class="btn-whatsapp" onclick="whatsappDonor('${p.phone}')"><i class="ph-bold ph-whatsapp-logo"></i> WhatsApp</button>` : ''}
+        </div>
       </div>
-      <div class="req-city"><i class="ph-bold ph-map-pin"></i>${r.patient} • ${r.city}</div>
-      <div class="req-timer"><i class="ph-bold ph-clock-countdown"></i>Expires in ${r.timer}</div>
-    </div>
-  `).join('');
-}
 
-/**
- * Handle emergency form submission
- * @param {Event} e
- */
-function submitEmergency(e) {
-  e.preventDefault();
-  const blood   = document.getElementById('eBlood').value;
-  const city    = document.getElementById('eCity').value;
-  const urgency = document.querySelector('input[name="urgency"]:checked').value;
-  const patient = document.getElementById('ePatient').value;
-  const units   = document.getElementById('eUnits').value;
+      <!-- Details Column -->
+      <div class="profile-details">
+        <div class="detail-card">
+          <h3><i class="ph-bold ph-user"></i> Personal Info</h3>
+          <div class="detail-row"><span>Full Name</span><strong>${name}</strong></div>
+          <div class="detail-row"><span>Email</span><strong>${p.email}</strong></div>
+          <div class="detail-row"><span>Blood Group</span><strong class="red-text">${p.blood_group}</strong></div>
+          <div class="detail-row"><span>City</span><strong>${p.city}</strong></div>
+          <div class="detail-row"><span>Phone</span><strong>${p.phone || 'Not set'}</strong></div>
+          <div class="detail-row"><span>Role</span><strong style="text-transform:capitalize">${p.role}</strong></div>
+          <div class="detail-row"><span>Member Since</span><strong>${formatDate(p.created_at)}</strong></div>
+        </div>
 
-  // Add to active requests list (dummy)
-  activeRequests.unshift({ patient, blood, city, urgency, timer: '02:59:59' });
-  initEmergency();
-
-  // Show success toast
-  showToast(`🚨 Emergency request submitted for ${patient} (${blood} in ${city})`, 'success');
-
-  // Add notification
-  notifications.unshift({
-    id: Date.now(),
-    msg: `New emergency: ${blood} needed in ${city} — ${units} unit(s)`,
-    time: 'Just now',
-    read: false
-  });
-  updateBadge();
-
-  // Reset form
-  document.getElementById('emergencyForm').reset();
-}
-
-/* ================================================================
-   PROFILE PAGE INIT
-   ================================================================ */
-function initProfile() {
-  // Render profile stars (read-only display)
-  const starsEl = document.getElementById('profileStars');
-  starsEl.innerHTML = buildStarsHTML(4.9);
-
-  // Render interactive stars for rating widget
-  initInteractiveStars();
-
-  // Render donation history
-  const histEl = document.getElementById('historyList');
-  histEl.innerHTML = donationHistory.map(h => `
-    <div class="history-item">
-      <div>
-        <strong>${h.blood}</strong> — ${h.city}
-        <div style="font-size:0.75rem;color:var(--gray-400);margin-top:2px">${h.date}</div>
+        <div class="detail-card">
+          <h3><i class="ph-bold ph-clock-counter-clockwise"></i> Request History</h3>
+          <div class="history-list">${historyHTML}</div>
+        </div>
       </div>
-      <span class="history-status ${h.status}">${h.status}</span>
-    </div>
-  `).join('');
+    `;
+  } catch (err) {
+    container.innerHTML = `<p style="text-align:center;padding:40px;color:var(--red)">Error loading profile: ${err.message}</p>`;
+  }
 }
 
-/* ================================================================
-   AVAILABILITY TOGGLE
-   ================================================================ */
-function updateAvailStatus() {
-  const checked = document.getElementById('availToggle').checked;
+async function updateAvailStatus() {
+  const checked  = document.getElementById('availToggle').checked;
   const statusEl = document.getElementById('availStatus');
-  statusEl.textContent = checked ? 'Available' : 'Not Available';
-  statusEl.className = 'avail-status' + (checked ? '' : ' offline');
-  showToast(
-    checked ? '✅ You are now marked as Available' : '⛔ You are now marked as Unavailable',
-    checked ? 'success' : 'info'
-  );
+  try {
+    await api('/donors/availability', {
+      method: 'PUT',
+      body: JSON.stringify({ availability: checked })
+    });
+    statusEl.textContent = checked ? 'Available' : 'Not Available';
+    statusEl.className   = 'avail-status' + (checked ? '' : ' offline');
+    showToast(checked ? '✅ You are now Available' : '⛔ You are now Unavailable', checked ? 'success' : 'info');
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+    document.getElementById('availToggle').checked = !checked; // revert
+  }
 }
 
 /* ================================================================
-   INTERACTIVE STAR RATING
+   ADMIN PAGE
    ================================================================ */
-let selectedRating = 0;
-
-function initInteractiveStars() {
-  selectedRating = 0;
-  const stars = document.querySelectorAll('.star-btn');
-  stars.forEach(star => {
-    star.classList.remove('active');
-    // Hover: highlight up to hovered star
-    star.addEventListener('mouseenter', function () {
-      const val = parseInt(this.dataset.val);
-      stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= val));
-    });
-    // Mouse leave: revert to selected
-    star.addEventListener('mouseleave', function () {
-      stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= selectedRating));
-    });
-    // Click: lock selection
-    star.addEventListener('click', function () {
-      selectedRating = parseInt(this.dataset.val);
-      stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= selectedRating));
-    });
-  });
-}
-
-function submitRating() {
-  if (selectedRating === 0) {
-    showToast('Please select a star rating first.', 'error');
+async function initAdmin() {
+  if (!currentUser || currentUser.role !== 'admin') {
+    document.getElementById('page-admin').innerHTML = `
+      <div style="text-align:center;padding:80px 24px;padding-top:152px">
+        <i class="ph-bold ph-lock" style="font-size:4rem;color:var(--gray-300);display:block;margin-bottom:16px"></i>
+        <h3 style="font-family:var(--font-display);font-size:1.4rem;margin-bottom:8px">Admin Access Only</h3>
+        <p style="color:var(--gray-400)">Login as admin@bloodconnect.com to access this panel.</p>
+        <button class="btn-primary btn-lg" style="margin-top:20px" onclick="showPage('login')">Login as Admin</button>
+      </div>`;
     return;
   }
-  const feedback = document.getElementById('ratingFeedback').value;
-  showToast(`⭐ Thank you! You rated Ahmed ${selectedRating}/5 star${selectedRating > 1 ? 's' : ''}.`, 'success');
-  document.getElementById('ratingFeedback').value = '';
-  selectedRating = 0;
-  initInteractiveStars();
+
+  document.getElementById('adminDate').textContent =
+    new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  await Promise.all([loadAdminStats(), loadAdminUsers(), loadAdminRequests()]);
+}
+
+async function loadAdminStats() {
+  try {
+    const data = await api('/admin/stats');
+    const s = data.stats;
+    document.getElementById('adminStats').innerHTML = `
+      <div class="admin-stat-card red"><i class="ph-bold ph-users"></i><div><strong>${s.total_users}</strong><span>Total Users</span></div></div>
+      <div class="admin-stat-card rose"><i class="ph-bold ph-drop"></i><div><strong>${s.active_donors}</strong><span>Active Donors</span></div></div>
+      <div class="admin-stat-card amber"><i class="ph-bold ph-siren"></i><div><strong>${s.active_requests}</strong><span>Active Requests</span></div></div>
+      <div class="admin-stat-card green"><i class="ph-bold ph-check-circle"></i><div><strong>${s.fulfilled_requests}</strong><span>Requests Fulfilled</span></div></div>
+    `;
+  } catch (err) {
+    document.getElementById('adminStats').innerHTML = `<p style="color:var(--red);padding:20px">Error: ${err.message}</p>`;
+  }
+}
+
+async function loadAdminUsers() {
+  const tbody = document.getElementById('adminUsersTable');
+  try {
+    const data = await api('/admin/users');
+    tbody.innerHTML = data.users.map(u => `
+      <tr>
+        <td>${u.name}</td>
+        <td><span class="role-badge ${u.role}">${u.role}</span></td>
+        <td>${u.city || '—'}</td>
+        <td><strong style="color:var(--red)">${u.blood_group || '—'}</strong></td>
+        <td><span class="status-badge ${u.is_active ? 'active' : 'inactive'}">${u.is_active ? 'active' : 'inactive'}</span></td>
+        <td>
+          <button class="action-btn" onclick="adminToggleUser(${u.id}, ${u.is_active})">
+            ${u.is_active ? 'Suspend' : 'Activate'}
+          </button>
+          <button class="action-btn" style="margin-left:4px;background:var(--red-light);color:var(--red)" onclick="adminDeleteUser(${u.id}, '${u.name}')">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);text-align:center">Error: ${err.message}</td></tr>`;
+  }
+}
+
+async function loadAdminRequests() {
+  const tbody = document.getElementById('adminRequestsTable');
+  try {
+    const data = await api('/admin/requests');
+    tbody.innerHTML = data.requests.map(r => `
+      <tr>
+        <td>${r.patient_name}</td>
+        <td><strong style="color:var(--red)">${r.blood_group}</strong></td>
+        <td>${r.city}</td>
+        <td><span class="req-urgency ${r.urgency}">${r.urgency}</span></td>
+        <td><span class="status-badge ${r.status}">${r.status}</span></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);text-align:center">Error: ${err.message}</td></tr>`;
+  }
+}
+
+async function adminToggleUser(id, currentStatus) {
+  if (!confirm(`Are you sure you want to ${currentStatus ? 'suspend' : 'activate'} this user?`)) return;
+  try {
+    const data = await api(`/admin/users/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_active: !currentStatus })
+    });
+    showToast(data.message, 'success');
+    loadAdminUsers();
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+  }
+}
+
+async function adminDeleteUser(id, name) {
+  if (!confirm(`DELETE user "${name}"? This action cannot be undone.`)) return;
+  try {
+    const data = await api(`/admin/users/${id}`, { method: 'DELETE' });
+    showToast(data.message, 'success');
+    loadAdminUsers();
+    loadAdminStats();
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+  }
 }
 
 /* ================================================================
    CONTACT ACTIONS
    ================================================================ */
-function callDonor(name) {
-  showModal(`
-    <h3 style="color:var(--red);margin-bottom:12px"><i class="ph-bold ph-phone-call"></i> Calling ${name}</h3>
-    <p style="font-size:.9rem;color:var(--gray-600);margin-bottom:20px">Initiating call to <strong>${name}</strong>. In the full app this would use a real phone number.</p>
-    <button class="btn-primary btn-full" onclick="closeModal()">Close</button>
-  `);
-}
-
 function emailDonor(email) {
-  window.location.href = `mailto:${email}?subject=Blood%20Donation%20Request`;
+  window.location.href = `mailto:${email}?subject=Blood%20Donation%20Request&body=Hello%2C%20I%20need%20your%20help%20for%20blood%20donation.`;
   showToast(`📧 Opening email to ${email}`, 'info');
 }
 
 function whatsappDonor(phone) {
-  const url = `https://wa.me/${phone.replace(/\D/g,'')}?text=Hello!%20I%20need%20your%20help%20for%20blood%20donation.`;
-  window.open(url, '_blank');
-}
-
-/* ================================================================
-   ADMIN PAGE INIT
-   ================================================================ */
-function initAdmin() {
-  // Set date
-  const dateEl = document.getElementById('adminDate');
-  if (dateEl) {
-    dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  }
-
-  // Render Users Table
-  const usersBody = document.getElementById('adminUsersTable');
-  usersBody.innerHTML = adminUsers.map(u => `
-    <tr>
-      <td>${u.name}</td>
-      <td><span class="role-badge ${u.role}">${u.role}</span></td>
-      <td>${u.city}</td>
-      <td><span class="status-badge ${u.status}">${u.status}</span></td>
-      <td><button class="action-btn" onclick="adminAction('${u.name}')">Manage</button></td>
-    </tr>
-  `).join('');
-
-  // Render Requests Table
-  const reqBody = document.getElementById('adminRequestsTable');
-  reqBody.innerHTML = adminRequests.map(r => `
-    <tr>
-      <td>${r.patient}</td>
-      <td><strong style="color:var(--red)">${r.blood}</strong></td>
-      <td>${r.city}</td>
-      <td><span class="req-urgency ${r.urgency}">${r.urgency}</span></td>
-      <td><span class="status-badge ${r.status}">${r.status}</span></td>
-    </tr>
-  `).join('');
-}
-
-function adminAction(name) {
-  showModal(`
-    <h3 style="margin-bottom:16px">Manage User: ${name}</h3>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn-outline" onclick="showToast('Profile viewed','info');closeModal()"><i class="ph-bold ph-eye"></i> View Profile</button>
-      <button class="btn-outline" onclick="showToast('User suspended','info');closeModal()"><i class="ph-bold ph-pause"></i> Suspend Account</button>
-      <button style="background:var(--red);color:white;padding:10px;border-radius:8px;font-weight:600" onclick="showToast('User deleted','success');closeModal()"><i class="ph-bold ph-trash"></i> Delete User</button>
-    </div>
-  `);
-}
-
-/* ================================================================
-   LOGIN / REGISTER
-   ================================================================ */
-function switchTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((t, i) => {
-    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
-  });
-  document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
-  document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
-}
-
-function handleLogin(e) {
-  e.preventDefault();
-  showToast('✅ Logged in successfully! Welcome back.', 'success');
-  setTimeout(() => showPage('home'), 800);
-}
-
-function handleRegister(e) {
-  e.preventDefault();
-  showToast('🎉 Account created! You can now log in.', 'success');
-  setTimeout(() => switchTab('login'), 1000);
-}
-
-/* Toggle password visibility */
-function togglePass(inputId) {
-  const input = document.getElementById(inputId);
-  const eyeId = inputId === 'loginPass' ? 'loginEye' : 'regEye';
-  const eye   = document.getElementById(eyeId);
-  if (input.type === 'password') {
-    input.type = 'text';
-    eye.classList.replace('ph-eye', 'ph-eye-slash');
-  } else {
-    input.type = 'password';
-    eye.classList.replace('ph-eye-slash', 'ph-eye');
-  }
-}
-
-/* ================================================================
-   TOAST NOTIFICATION
-   ================================================================ */
-let toastTimeout;
-/**
- * Show a temporary toast message
- * @param {string} message
- * @param {'success'|'error'|'info'|''} type
- */
-function showToast(message, type = '') {
-  clearTimeout(toastTimeout);
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.className = `toast show ${type}`;
-  toastTimeout = setTimeout(() => toast.classList.remove('show'), 3500);
+  const clean = phone.replace(/\D/g, '');
+  window.open(`https://wa.me/${clean}?text=Hello!%20I%20need%20your%20help%20for%20blood%20donation.%20Please%20contact%20me.`, '_blank');
 }
 
 /* ================================================================
@@ -572,22 +858,62 @@ function showModal(html) {
 
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
+  modalSelectedRating = 0;
+}
+
+/* ================================================================
+   TOAST
+   ================================================================ */
+let toastTimeout;
+function showToast(message, type = '') {
+  clearTimeout(toastTimeout);
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = `toast show ${type}`;
+  toastTimeout = setTimeout(() => toast.classList.remove('show'), 3800);
+}
+
+/* ================================================================
+   UTILITY FUNCTIONS
+   ================================================================ */
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hrs   = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins < 1)  return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  if (hrs < 24)  return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+  return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
 /* ================================================================
    NAVBAR SCROLL EFFECT
    ================================================================ */
 window.addEventListener('scroll', () => {
-  const navbar = document.getElementById('navbar');
-  navbar.style.boxShadow = window.scrollY > 10
-    ? '0 4px 24px rgba(217,43,58,0.15)'
-    : '0 2px 16px rgba(217,43,58,0.08)';
+  document.getElementById('navbar').style.boxShadow =
+    window.scrollY > 10 ? '0 4px 24px rgba(217,43,58,.15)' : '0 2px 16px rgba(217,43,58,.08)';
 });
 
 /* ================================================================
    INIT ON LOAD
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
+  // Restore session from localStorage
+  const savedUser  = localStorage.getItem('bc_user');
+  const savedToken = localStorage.getItem('bc_token');
+  if (savedUser && savedToken) {
+    currentUser = JSON.parse(savedUser);
+    authToken   = savedToken;
+    updateAuthUI();
+    loadNotifications();
+  }
+
   initHome();
-  renderNotifications();
 });
