@@ -1318,16 +1318,27 @@ function renderWizardStep() {
       ${hasPhone ? `
         <!-- Action Message Preview -->
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;font-size:.78rem;color:#166534;margin-bottom:20px">
-          <strong>💬 Message will contain:</strong> Patient name, blood group, urgency level, hospital location + Google Maps link
+          <strong>💬 Message will contain:</strong> ${ document.getElementById('aiOutreachText') ? 'Custom AI message generated from the button.' : 'Patient name, blood group, urgency level, hospital location + Google Maps link' }
         </div>
         
-        <button 
-          onclick="wizardSendAndNext()"
-          style="width:100%;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:12px;padding:16px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.97 0C5.366 0 0 5.366 0 11.97c0 2.111.555 4.093 1.523 5.815L0 24l6.368-1.492A11.923 11.923 0 0011.97 23.94C18.574 23.94 24 18.574 24 11.97 24 5.366 18.574 0 11.97 0zm0 21.888a9.903 9.903 0 01-5.031-1.375l-.361-.214-3.741.981.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.258c0-5.456 4.435-9.891 9.891-9.891 5.455 0 9.89 4.435 9.89 9.891 0 5.455-4.435 9.888-9.901 9.888z"/></svg>
-          ${isLast ? '📲 Send WhatsApp & Finish!' : '📲 Send WhatsApp & Next →'}
-        </button>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <button 
+            onclick="wizardSendAndNext()"
+            style="flex:2;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:12px;padding:16px;font-size:1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"
+          >
+            <i class="ph-bold ph-whatsapp-logo" style="font-size:1.2rem"></i>
+            ${isLast ? 'Send & Finish' : 'Send & Next →'}
+          </button>
+          
+          <button 
+            id="autoSendBtn"
+            onclick="toggleAutoSend()"
+            style="flex:1;background:var(--gray-800);color:#fff;border:none;border-radius:12px;padding:16px;font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"
+            title="Automatically opens a tab every 2 seconds. Ensure popups are allowed!"
+          >
+            <i class="ph-bold ph-play"></i> Auto-Send
+          </button>
+        </div>
       ` : `
         <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:.8rem;color:#b91c1c;margin-bottom:20px;text-align:center">
           ⚠️ Cannot send WhatsApp message because this donor has no phone number.
@@ -1358,8 +1369,21 @@ function renderWizardStep() {
 
 function wizardSendAndNext() {
   const donor = wizardDonors[wizardIndex];
-  if (donor && donor.whatsapp_link) {
-    window.open(donor.whatsapp_link, '_blank');
+  if (donor && donor.phone) {
+    let link = donor.whatsapp_link;
+    // DYNAMICALLY OVERRIDE WITH AI MESSAGE IF IT EXISTS
+    const aiTextArea = document.getElementById('aiOutreachText');
+    if (aiTextArea && aiTextArea.value.trim()) {
+      const cleanPhone = donor.phone.replace(/\D/g, '');
+      const encodedMsg = encodeURIComponent(aiTextArea.value.trim());
+      link = `https://wa.me/${cleanPhone}?text=${encodedMsg}`;
+    }
+    
+    const popup = window.open(link, '_blank');
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      showToast("Popup blocked! Please allow popups for Auto-Send to work.", "error");
+      if (autoSendTimer) toggleAutoSend(); // Pause if blocked
+    }
   }
   wizardIndex++;
   renderWizardStep();
@@ -1370,7 +1394,31 @@ function wizardSkip() {
   renderWizardStep();
 }
 
+let autoSendTimer = null;
+function toggleAutoSend() {
+  const btn = document.getElementById('autoSendBtn');
+  if (!btn) return;
+  
+  if (autoSendTimer) {
+    clearInterval(autoSendTimer);
+    autoSendTimer = null;
+    btn.innerHTML = '<i class="ph-bold ph-play"></i> Auto-Send';
+    btn.style.background = 'var(--gray-800)';
+  } else {
+    btn.innerHTML = '<i class="ph-bold ph-pause"></i> Pause';
+    btn.style.background = 'var(--red)';
+    autoSendTimer = setInterval(() => {
+      if (wizardIndex >= wizardDonors.length) {
+        toggleAutoSend(); // Stop when done
+        return;
+      }
+      wizardSendAndNext();
+    }, 2000); // 2 seconds between tabs to avoid aggressive blocking
+  }
+}
+
 function closeAlertWizard() {
+  if (autoSendTimer) toggleAutoSend(); // Clear interval if running
   const overlay = document.getElementById('alertWizardOverlay');
   if (overlay) overlay.style.display = 'none';
   wizardDonors = [];
