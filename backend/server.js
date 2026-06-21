@@ -35,6 +35,7 @@ app.use('/api/requests',      require('./routes/requestRoutes'));
 app.use('/api/ratings',       require('./routes/ratingRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/admin',         require('./routes/adminRoutes'));
+app.use('/api/ai',            require('./routes/aiRoutes'));
 
 // ── Health Check ────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

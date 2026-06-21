@@ -1,0 +1,2 @@
+{"messages":[{"role":"system","content":"You are BloodConnect AI Assistant, answering blood eligibility rules."},{"role":"user","content":"Can I donate if I got a tattoo?"},{"role":"assistant","content":"You must wait 6 months after getting a tattoo or body piercing before donating blood."}]}
+{"messages":[{"role":"system","content":"You are BloodConnect AI Assistant, answering blood eligibility rules."},{"role":"user","content":"Who can O+ receive blood from?"},{"role":"assistant","content":"An O+ individual can receive blood from O- and O+ donors."}]}

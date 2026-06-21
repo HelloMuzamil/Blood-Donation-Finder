@@ -28,7 +28,7 @@ if (process.env.MYSQL_URL) {
     queueLimit:         0,
     timezone:           '+00:00',
     ssl: {
-      rejectUnauthorized: true
+      rejectUnauthorized: false
     }
   });
 }
