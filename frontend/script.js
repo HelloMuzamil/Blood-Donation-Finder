@@ -649,16 +649,10 @@ async function submitModalRating(donorId) {
 async function openFulfillModal(requestId) {
   showModal('<div class="loading-spinner" style="padding:40px"><div class="spinner"></div><p>Loading donors…</p></div>');
   try {
-    // We'll fetch the batches for this request to get the queued donors
-    const data = await api(`/admin/requests/${requestId}/batches`);
+    // Fetch the donors queued for this request
+    const data = await api(`/requests/${requestId}/donors`);
     
-    // Flatten all donors from all batches
-    let allDonors = [];
-    if (data.batches && data.batches.length > 0) {
-      data.batches.forEach(b => {
-        allDonors = allDonors.concat(b.donors);
-      });
-    }
+    let allDonors = data.donors || [];
 
     if (allDonors.length === 0) {
       document.getElementById('modalBox').innerHTML = `

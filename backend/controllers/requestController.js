@@ -245,4 +245,30 @@ const fulfillRequest = async (req, res) => {
   }
 };
 
-module.exports = { createRequest, getActiveRequests, getMyRequests, updateRequestStatus, fulfillRequest };
+/* ----------------------------------------------------------------
+   GET DONORS FOR MY REQUEST
+   GET /api/requests/:id/donors
+   ---------------------------------------------------------------- */
+const getRequestDonors = async (req, res) => {
+  try {
+    const [requests] = await db.query('SELECT id FROM blood_requests WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    if (requests.length === 0) {
+      return res.status(404).json({ success: false, message: 'Request not found or unauthorized.' });
+    }
+
+    const [donors] = await db.query(`
+      SELECT u.id, u.first_name, u.last_name, u.blood_group 
+      FROM request_queue rq
+      JOIN users u ON rq.donor_id = u.id
+      WHERE rq.request_id = ?
+    `, [req.params.id]);
+
+    const mapped = donors.map(d => ({ id: d.id, name: `${d.first_name} ${d.last_name}`, blood_group: d.blood_group }));
+    return res.json({ success: true, donors: mapped });
+  } catch (err) {
+    console.error('Get request donors error:', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+module.exports = { createRequest, getActiveRequests, getMyRequests, updateRequestStatus, fulfillRequest, getRequestDonors };
