@@ -19,7 +19,7 @@ try {
 /**
  * Helper to call Gemini API
  */
-async function callGemini(systemPrompt, userPrompt) {
+async function callGemini(systemPrompt, userPrompt, history = []) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY') {
     // Graceful Mock for testing without API keys (Highly helpful for grading!)
@@ -33,13 +33,21 @@ async function callGemini(systemPrompt, userPrompt) {
   const startTime = Date.now();
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    
+    const contents = history.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.text }]
+    }));
+    contents.push({
+      role: 'user',
+      parts: [{ text: userPrompt }]
+    });
+
     const payload = {
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `${systemPrompt}\n\nUser Question: ${userPrompt}` }]
-        }
-      ],
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      contents: contents,
       generationConfig: {
         maxOutputTokens: 1000,
         temperature: 0.2
@@ -77,7 +85,7 @@ async function callGemini(systemPrompt, userPrompt) {
  */
 const chat = async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, history = [] } = req.body;
     if (!message) {
       return res.status(400).json({ success: false, message: 'Message is required.' });
     }
@@ -106,7 +114,7 @@ ${guidelinesText}
 `;
 
     // Call LLM
-    const { text, latency } = await callGemini(systemPrompt, message);
+    const { text, latency } = await callGemini(systemPrompt, message, history);
 
     // Save to llm_logs
     const userId = req.user ? req.user.id : null;

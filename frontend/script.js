@@ -1490,6 +1490,8 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ================================================================
    AI CHATBOT CLIENT & OUTREACH GENERATOR
    ================================================================ */
+let aiChatHistory = [];
+
 function toggleAIChat() {
   const windowEl = document.getElementById('aiChatWindow');
   windowEl.classList.toggle('open');
@@ -1534,8 +1536,12 @@ async function sendAIChatMessage() {
   try {
     const data = await api('/ai/chat', {
       method: 'POST',
-      body: JSON.stringify({ message: query })
+      body: JSON.stringify({ message: query, history: aiChatHistory })
     });
+
+    // Add to history
+    aiChatHistory.push({ role: 'user', text: query });
+    aiChatHistory.push({ role: 'model', text: data.response });
 
     // Remove Typing Indicator
     const typing = document.getElementById('aiTyping');
