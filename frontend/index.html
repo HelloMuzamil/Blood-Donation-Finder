@@ -435,6 +435,38 @@
 <!-- ===================== TOAST ===================== -->
 <div class="toast" id="toast"></div>
 
+<!-- ===================== AI CHATBOT WIDGET ===================== -->
+<button class="ai-chatbot-btn" id="aiChatbotBtn" onclick="toggleAIChat()" aria-label="AI Assistant">
+  <i class="ph-bold ph-chats-teardrop"></i>
+</button>
+
+<div class="ai-chat-window" id="aiChatWindow">
+  <div class="ai-chat-header">
+    <div class="ai-chat-header-info">
+      <i class="ph-bold ph-sparkle"></i>
+      <div>
+        <h4>BloodConnect AI</h4>
+        <span>Online • Eligibility RAG Assistant</span>
+      </div>
+    </div>
+    <button class="ai-chat-close" onclick="toggleAIChat()" aria-label="Close Chat">
+      <i class="ph-bold ph-x"></i>
+    </button>
+  </div>
+  <div class="ai-chat-messages" id="aiChatMessages">
+    <div class="ai-msg bot">
+      <p>Hello! I am your <strong>BloodConnect AI Assistant</strong>. 🩸</p>
+      <p>Ask me anything about blood donation eligibility, rules, or blood group compatibilities!</p>
+    </div>
+  </div>
+  <div class="ai-chat-input-area">
+    <input type="text" class="ai-chat-input" id="aiChatInput" placeholder="Ask about tattoos, weight, compatibility..." onkeypress="handleAIChatKey(event)" />
+    <button class="ai-chat-send" onclick="sendAIChatMessage()" aria-label="Send Message">
+      <i class="ph-bold ph-paper-plane-right"></i>
+    </button>
+  </div>
+</div>
+
 <script src="script.js"></script>
 </body>
 </html>

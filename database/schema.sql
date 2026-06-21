@@ -101,3 +101,17 @@ CREATE TABLE IF NOT EXISTS request_queue (
 -- ============================================================
 INSERT IGNORE INTO users (first_name, last_name, email, password, role, phone, city, blood_group, availability, trust_score)
 VALUES ('Admin', 'User', 'admin@bloodconnect.com', '$2a$10$01XeQljJm9YINO7Zvk5SR.jPP0PgiFymeaBR3k.mD8.1s2Fi9Q8oC', 'admin', '+92-300-0000000', 'Islamabad', 'O+', 1, 0.0);
+
+-- ============================================================
+-- LLM LOGS TABLE (LLMOps / Monitoring & Evaluation)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS llm_logs (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  user_id      INT NULL,
+  feature_name VARCHAR(50) NOT NULL,
+  prompt       TEXT NOT NULL,
+  response     TEXT NOT NULL,
+  latency_ms   INT NOT NULL,
+  feedback     TINYINT DEFAULT 0, -- 1 for Thumbs Up, -1 for Thumbs Down, 0 for neutral
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -1141,6 +1141,11 @@ async function openBatchPanel(requestId) {
         <div><span>Status</span><strong>${req.status}</strong></div>
         ${req.maps_link ? `<a href="${req.maps_link}" target="_blank" class="btn-maps"><i class="ph-bold ph-map-trifold"></i> Request Location</a>` : ''}
       </div>
+      <div id="aiOutreachContainer" style="margin-top: 12px;">
+        <button class="btn-ai-sparkle" onclick="generateAIOutreach(${requestId}, this)">
+          <i class="ph-bold ph-sparkle"></i> Generate AI Outreach WhatsApp Text
+        </button>
+      </div>
     `;
 
     if (data.batches.length === 0) {
@@ -1481,3 +1486,167 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initHome();
 });
+
+/* ================================================================
+   AI CHATBOT CLIENT & OUTREACH GENERATOR
+   ================================================================ */
+function toggleAIChat() {
+  const windowEl = document.getElementById('aiChatWindow');
+  windowEl.classList.toggle('open');
+  if (windowEl.classList.contains('open')) {
+    document.getElementById('aiChatInput').focus();
+  }
+}
+
+function handleAIChatKey(e) {
+  if (e.key === 'Enter') {
+    sendAIChatMessage();
+  }
+}
+
+async function sendAIChatMessage() {
+  const inputEl = document.getElementById('aiChatInput');
+  const query = inputEl.value.trim();
+  if (!query) return;
+
+  inputEl.value = '';
+  const messagesContainer = document.getElementById('aiChatMessages');
+
+  // Render User Message
+  const userMsgEl = document.createElement('div');
+  userMsgEl.className = 'ai-msg user';
+  userMsgEl.innerHTML = `<p>${escapeHtml(query)}</p>`;
+  messagesContainer.appendChild(userMsgEl);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  // Render Typing Indicator
+  const typingEl = document.createElement('div');
+  typingEl.className = 'ai-typing-indicator';
+  typingEl.id = 'aiTyping';
+  typingEl.innerHTML = `
+    <div class="ai-typing-dot"></div>
+    <div class="ai-typing-dot"></div>
+    <div class="ai-typing-dot"></div>
+  `;
+  messagesContainer.appendChild(typingEl);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  try {
+    const data = await api('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: query })
+    });
+
+    // Remove Typing Indicator
+    const typing = document.getElementById('aiTyping');
+    if (typing) typing.remove();
+
+    // Render Bot Message
+    const botMsgEl = document.createElement('div');
+    botMsgEl.className = 'ai-msg bot';
+    const formatted = formatMarkdown(data.response);
+    
+    botMsgEl.innerHTML = `
+      ${formatted}
+      <div class="ai-feedback-container">
+        <button class="ai-feedback-btn" onclick="sendAIVote(${data.logId}, 1, this)" title="Helpful"><i class="ph-bold ph-thumbs-up"></i></button>
+        <button class="ai-feedback-btn" onclick="sendAIVote(${data.logId}, -1, this)" title="Unhelpful"><i class="ph-bold ph-thumbs-down"></i></button>
+      </div>
+    `;
+    messagesContainer.appendChild(botMsgEl);
+  } catch (err) {
+    const typing = document.getElementById('aiTyping');
+    if (typing) typing.remove();
+    const errorEl = document.createElement('div');
+    errorEl.className = 'ai-msg bot';
+    errorEl.style.color = 'var(--red)';
+    errorEl.innerHTML = `<p>Error: ${err.message}</p>`;
+    messagesContainer.appendChild(errorEl);
+  }
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+async function sendAIVote(logId, vote, btn) {
+  try {
+    await api('/ai/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ logId, feedback: vote })
+    });
+    showToast('Feedback logged! Thank you.', 'success');
+    
+    const container = btn.parentElement;
+    container.querySelectorAll('.ai-feedback-btn').forEach(b => {
+      b.classList.remove('active-up', 'active-down');
+    });
+    if (vote === 1) btn.classList.add('active-up');
+    if (vote === -1) btn.classList.add('active-down');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function generateAIOutreach(requestId, btn) {
+  const container = document.getElementById('aiOutreachContainer');
+  btn.disabled = true;
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = '<i class="ph-bold ph-circle-notch spinner-slow"></i> Generating…';
+
+  try {
+    const data = await api('/ai/generate-outreach', {
+      method: 'POST',
+      body: JSON.stringify({ requestId })
+    });
+
+    container.innerHTML = `
+      <div class="ai-outreach-container">
+        <div class="ai-outreach-header">
+          <span>✨ AI Generated WhatsApp Message</span>
+          <button class="btn-outline btn-sm" onclick="copyAIOutreachText()" style="padding:2px 8px;font-size:0.75rem"><i class="ph-bold ph-copy"></i> Copy</button>
+        </div>
+        <textarea class="ai-outreach-text" id="aiOutreachText">${data.outreachText}</textarea>
+        <div style="font-size:0.7rem;color:var(--gray-400);margin-top:6px;text-align:right">You can edit the message above before copying.</div>
+      </div>
+    `;
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+}
+
+function copyAIOutreachText() {
+  const textarea = document.getElementById('aiOutreachText');
+  if (!textarea) return;
+  textarea.select();
+  document.execCommand('copy');
+  showToast('📋 Message copied to clipboard!', 'success');
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatMarkdown(text) {
+  // Bold: **text** -> <strong>text</strong>
+  let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Format list items and paragraphs
+  formatted = formatted.split('\n\n').map(p => {
+    const trimmed = p.trim();
+    if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
+      const items = trimmed.split('\n').map(li => {
+        const cleaned = li.trim().replace(/^[-*]\s*/, '');
+        return `<li>${cleaned}</li>`;
+      }).join('');
+      return `<ul>${items}</ul>`;
+    }
+    return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+  }).join('');
+  
+  return formatted;
+}
