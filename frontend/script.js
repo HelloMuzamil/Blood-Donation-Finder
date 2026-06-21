@@ -1045,12 +1045,27 @@ async function loadAdminUsers() {
     const data = await api('/admin/users');
     tbody.innerHTML = data.users.map(u => `
       <tr>
-        <td>${u.name}</td>
+        <td>
+          <div style="font-weight:700;color:var(--gray-800)">${u.name}</div>
+          <div style="font-size:.75rem;color:var(--gray-400)">${u.email || '—'}</div>
+        </td>
         <td><span class="role-badge ${u.role}">${u.role}</span></td>
         <td>${u.city || '—'}</td>
-        <td><strong style="color:var(--red)">${u.blood_group || '—'}</strong></td>
-        <td><span class="status-badge ${u.is_active ? 'active' : 'inactive'}">${u.is_active ? 'active' : 'inactive'}</span></td>
+        <td><strong style="color:var(--red);font-size:1rem">${u.blood_group || '—'}</strong></td>
         <td>
+          <span style="font-size:.8rem;color:var(--gray-600)">${u.phone || '—'}</span>
+        </td>
+        <td>
+          <span style="font-weight:700;color:#16a34a">${u.total_donations || 0}</span>
+          <span style="font-size:.7rem;color:var(--gray-400)"> donations</span>
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:.75rem">${u.availability ? '🟢 Available' : '🔴 Unavailable'}</span>
+          </div>
+        </td>
+        <td><span class="status-badge ${u.is_active ? 'active' : 'inactive'}">${u.is_active ? 'active' : 'suspended'}</span></td>
+        <td style="white-space:nowrap">
           <button class="action-btn" onclick="adminToggleUser(${u.id}, ${u.is_active})">
             ${u.is_active ? 'Suspend' : 'Activate'}
           </button>
@@ -1059,7 +1074,7 @@ async function loadAdminUsers() {
       </tr>
     `).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);text-align:center">Error: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);text-align:center">Error: ${err.message}</td></tr>`;
   }
 }
 
@@ -1067,7 +1082,13 @@ async function loadAdminRequests() {
   const tbody = document.getElementById('adminRequestsTable');
   try {
     const data = await api('/admin/requests');
-    tbody.innerHTML = data.requests.map(r => `
+    // Only show active requests (pending / processing) — hide completed & expired
+    const active = data.requests.filter(r => r.status === 'pending' || r.status === 'processing');
+    if (active.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">✅ No active emergency requests</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = active.map(r => `
       <tr>
         <td>${r.patient_name}</td>
         <td><strong style="color:var(--red)">${r.blood_group}</strong></td>
