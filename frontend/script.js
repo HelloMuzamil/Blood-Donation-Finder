@@ -644,6 +644,96 @@ async function submitModalRating(donorId) {
 }
 
 /* ================================================================
+   FULFILLMENT MODAL (Proof of Donation)
+   ================================================================ */
+async function openFulfillModal(requestId) {
+  showModal('<div class="loading-spinner" style="padding:40px"><div class="spinner"></div><p>Loading donors…</p></div>');
+  try {
+    // We'll fetch the batches for this request to get the queued donors
+    const data = await api(`/admin/requests/${requestId}/batches`);
+    
+    // Flatten all donors from all batches
+    let allDonors = [];
+    if (data.batches && data.batches.length > 0) {
+      data.batches.forEach(b => {
+        allDonors = allDonors.concat(b.donors);
+      });
+    }
+
+    if (allDonors.length === 0) {
+      document.getElementById('modalBox').innerHTML = `
+        <div style="padding:20px;text-align:center">
+          <h3 style="font-family:var(--font-display);font-size:1.3rem;color:var(--gray-800);margin-bottom:10px">Mark as Fulfilled</h3>
+          <p style="color:var(--gray-500);font-size:.9rem;margin-bottom:20px">No donors were matched for this request. Still want to mark it completed?</p>
+          <button class="btn-primary btn-full" onclick="submitFulfill(${requestId}, null)">Mark Completed Without Donor</button>
+          <button onclick="closeModal()" class="btn-outline btn-full mt-10">Cancel</button>
+        </div>
+      `;
+      return;
+    }
+
+    const optionsHTML = allDonors.map(d => `
+      <option value="${d.id}">${d.name} (${d.blood_group})</option>
+    `).join('');
+
+    document.getElementById('modalBox').innerHTML = `
+      <div style="padding:10px;text-align:center">
+        <div style="font-size:3rem;margin-bottom:10px">🎉</div>
+        <h3 style="font-family:var(--font-display);font-size:1.4rem;color:var(--gray-800);margin-bottom:8px">Who gave blood?</h3>
+        <p style="color:var(--gray-500);font-size:.85rem;margin-bottom:20px">Give credit to the donor who helped you! Their total donations will increase, and we'll pause their emergency alerts for 3 months.</p>
+        
+        <div style="text-align:left;margin-bottom:20px">
+          <label style="font-size:.8rem;font-weight:700;color:var(--gray-600);margin-bottom:6px;display:block">SELECT DONOR:</label>
+          <select id="fulfillDonorId" class="form-input" style="width:100%">
+            <option value="">-- Select Donor --</option>
+            ${optionsHTML}
+            <option value="other">Someone else (Not in list)</option>
+          </select>
+        </div>
+
+        <button class="btn-primary btn-full" onclick="submitFulfill(${requestId}, document.getElementById('fulfillDonorId').value)">
+          ✅ Mark as Fulfilled
+        </button>
+        <button onclick="closeModal()" style="width:100%;margin-top:12px;padding:10px;border-radius:8px;background:var(--gray-100);color:var(--gray-600);font-weight:600;font-size:.85rem;border:none;cursor:pointer">Cancel</button>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('modalBox').innerHTML = `<p style="text-align:center;padding:20px;color:var(--red)">Error: ${err.message}</p><button onclick="closeModal()" class="btn-outline btn-full" style="margin-top:12px">Close</button>`;
+  }
+}
+
+async function submitFulfill(requestId, donorId) {
+  if (donorId === '') {
+    showToast('Please select a donor from the list.', 'error');
+    return;
+  }
+
+  try {
+    if (donorId === null || donorId === 'other') {
+      // Just mark request as completed without crediting a donor
+      await api(`/requests/${requestId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'completed' })
+      });
+      showToast('✅ Request marked as completed!', 'success');
+    } else {
+      // Credit specific donor
+      const data = await api(`/requests/${requestId}/fulfill`, {
+        method: 'POST',
+        body: JSON.stringify({ donor_id: donorId })
+      });
+      showToast(`✅ ${data.message}`, 'success');
+    }
+    
+    closeModal();
+    // Reload profile
+    initProfile();
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+  }
+}
+
+/* ================================================================
    STARS HTML
    ================================================================ */
 function buildStarsHTML(rating) {
@@ -773,12 +863,19 @@ async function initProfile() {
 
     const historyHTML = data.history.length > 0
       ? data.history.map(h => `
-          <div class="history-item">
-            <div>
-              <strong>${h.blood_group}</strong> — ${h.city}
-              <div style="font-size:.75rem;color:var(--gray-400);margin-top:2px">${h.patient_name} · ${formatDate(h.created_at)}</div>
+          <div class="history-item" style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <strong>${h.blood_group}</strong> — ${h.city}
+                <div style="font-size:.75rem;color:var(--gray-400);margin-top:2px">${h.patient_name} · ${formatDate(h.created_at)}</div>
+              </div>
+              <span class="history-status ${h.status}">${h.status}</span>
             </div>
-            <span class="history-status ${h.status}">${h.status}</span>
+            ${h.status !== 'completed' ? `
+              <button onclick="openFulfillModal(${h.id})" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:6px;padding:6px 10px;font-size:.75rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">
+                ✅ Mark as Fulfilled
+              </button>
+            ` : ''}
           </div>
         `).join('')
       : '<p style="font-size:.85rem;color:var(--gray-400);text-align:center;padding:16px">No request history yet.</p>';

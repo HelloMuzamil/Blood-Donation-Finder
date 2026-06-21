@@ -205,4 +205,44 @@ const updateRequestStatus = async (req, res) => {
   }
 };
 
-module.exports = { createRequest, getActiveRequests, getMyRequests, updateRequestStatus };
+/* ----------------------------------------------------------------
+   FULFILL REQUEST (Closed Loop Proof of Donation)
+   POST /api/requests/:id/fulfill
+   ---------------------------------------------------------------- */
+const fulfillRequest = async (req, res) => {
+  try {
+    const { donor_id } = req.body;
+    if (!donor_id) {
+      return res.status(400).json({ success: false, message: 'Donor ID is required.' });
+    }
+
+    const whereClause = req.user.role === 'admin'
+      ? 'WHERE id = ?'
+      : 'WHERE id = ? AND user_id = ?';
+    const params = req.user.role === 'admin'
+      ? [req.params.id]
+      : [req.params.id, req.user.id];
+
+    // Check if request exists and is owned by user
+    const [requests] = await db.query(`SELECT id FROM blood_requests ${whereClause}`, params);
+    if (requests.length === 0) {
+      return res.status(404).json({ success: false, message: 'Request not found or unauthorized.' });
+    }
+
+    // Mark request as completed
+    await db.query('UPDATE blood_requests SET status = "completed" WHERE id = ?', [req.params.id]);
+
+    // Increment donor total_donations and set availability to 0
+    await db.query(
+      'UPDATE users SET total_donations = total_donations + 1, availability = 0 WHERE id = ?',
+      [donor_id]
+    );
+
+    return res.json({ success: true, message: 'Request fulfilled! Donor credited and snoozed.' });
+  } catch (err) {
+    console.error('Fulfill request error:', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+module.exports = { createRequest, getActiveRequests, getMyRequests, updateRequestStatus, fulfillRequest };

@@ -66,6 +66,8 @@ function buildWhatsAppMessage(request) {
     `⏱ Urgency: ${formatUrgency(urgency)}`,
     '',
     'Please reply YES if you are available.',
+    '',
+    '_Note: If you are temporarily unavailable, you can turn off alerts by unchecking Availability in your BloodConnect Profile._'
   ].join('\n');
 }
 
