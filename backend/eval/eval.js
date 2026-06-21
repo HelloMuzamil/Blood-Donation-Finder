@@ -2,9 +2,9 @@
  * eval/eval.js
  * Automated evaluation script to measure RAG correctness, guardrail compliance, and response latency.
  */
-require('dotenv').config({ path: '../.env' });
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Mock guidelines loader
 const filePath = path.join(__dirname, '../data/blood_guidelines.txt');
@@ -66,9 +66,9 @@ async function callLLM(prompt) {
 
   const startTime = Date.now();
   try {
-    const url = `https://genergenerativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://genergenerativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     // Fallback URL
-    const finalUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const finalUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const payload = {
       contents: [{
         role: 'user',
@@ -118,10 +118,14 @@ ${guidelinesText}
 ---------------------------------------------
 `;
 
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
   for (const test of TEST_SUITE) {
     console.log(`Running: "${test.name}"...`);
     const prompt = `${systemPrompt}\n\nUser Question: ${test.query}`;
     
+    // Add sleep delay to prevent 429 rate limit errors on GCP keys
+    await sleep(2000);
     const response = await callLLM(prompt);
     
     let passed = true;

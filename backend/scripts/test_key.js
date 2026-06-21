@@ -4,7 +4,7 @@ console.log('Using API Key:', apiKey ? (apiKey.substring(0, 10) + '...') : 'unde
 
 async function test() {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const payload = {
       contents: [{
         parts: [{ text: "Hello" }]
