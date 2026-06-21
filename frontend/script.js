@@ -1037,16 +1037,16 @@ async function openBatchPanel(requestId) {
       return;
     }
 
-    // ── Send ALL button (one-click alert every donor) ──
+    // ── Send ALL button (step-by-step wizard) ──
     const allSent = data.batches.every(b => b.status === 'sent');
     const sendAllBanner = !allSent ? `
-      <div style="margin-bottom:16px;padding:14px 16px;background:linear-gradient(135deg,#16a34a,#15803d);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="margin-bottom:16px;padding:18px 20px;background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div>
-          <div style="color:#fff;font-weight:700;font-size:.95rem;">🚀 Send to ALL ${data.total_donors} Donors at Once</div>
-          <div style="color:#bbf7d0;font-size:.78rem;margin-top:2px;">Opens WhatsApp for every matched donor in one click</div>
+          <div style="color:#fff;font-weight:800;font-size:1rem;">📲 Alert ${data.total_donors} Donors — One by One</div>
+          <div style="color:#ddd6fe;font-size:.78rem;margin-top:4px;">Guided wizard — send 1 WhatsApp at a time, no popup block!</div>
         </div>
-        <button id="sendAllBtn" onclick="sendAllBatches(${requestId}, ${data.total_donors})" style="background:#fff;color:#16a34a;border:none;border-radius:8px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;white-space:nowrap;">
-          📲 Send ALL Now
+        <button id="sendAllBtn" onclick="sendAllBatches(${requestId}, ${data.total_donors})" style="background:#fff;color:#7c3aed;border:none;border-radius:10px;padding:12px 20px;font-weight:800;font-size:.88rem;cursor:pointer;white-space:nowrap;flex-shrink:0">
+          🚀 Start Alerting
         </button>
       </div>
     ` : '<p style="text-align:center;color:#16a34a;font-weight:700;padding:10px 0;">✅ All donors have already been alerted!</p>';
@@ -1085,49 +1085,167 @@ async function openBatchPanel(requestId) {
   }
 }
 
+// ── ALERT WIZARD STATE ──────────────────────────────────────────
+let wizardDonors = [];
+let wizardIndex  = 0;
+let wizardReqId  = null;
+
 async function sendAllBatches(requestId, totalDonors) {
-  if (!confirm(`Send WhatsApp alerts to ALL ${totalDonors} matched donors at once?\n\nYour browser will open ${totalDonors} WhatsApp tab(s). Please allow popups if prompted.`)) return;
-
-  const btn = document.getElementById('sendAllBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
-
+  // Fetch all donor links first
   try {
+    const btn = document.getElementById('sendAllBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+
     const data = await api(`/admin/requests/${requestId}/batches/send-all`, { method: 'POST' });
+    startAlertWizard(requestId, data.links);
 
-    // Open every WhatsApp link with a small delay so browser doesn't block them
-    data.links.forEach((link, i) => {
-      if (link.whatsapp_link) {
-        setTimeout(() => window.open(link.whatsapp_link, '_blank'), i * 600);
-      }
-    });
-
-    showToast(`✅ ${data.message}`, 'success');
-    openBatchPanel(requestId);
-    loadAdminRequests();
   } catch (err) {
     showToast(`❌ ${err.message}`, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '📲 Send ALL Now'; }
+    const btn = document.getElementById('sendAllBtn');
+    if (btn) { btn.disabled = false; btn.textContent = '📲 Start Alerting Donors'; }
   }
 }
 
 async function sendBatch(requestId, batchNum) {
-  if (!confirm(`Open WhatsApp links for Batch ${batchNum}? Confirm after sending each message.`)) return;
-
   try {
     const data = await api(`/admin/requests/${requestId}/batches/${batchNum}/send`, { method: 'POST' });
-
-    data.links.forEach((link, i) => {
-      if (link.whatsapp_link) {
-        setTimeout(() => window.open(link.whatsapp_link, '_blank'), i * 800);
-      }
-    });
-
-    showToast(`📲 ${data.message}`, 'success');
-    openBatchPanel(requestId);
-    loadAdminRequests();
+    startAlertWizard(requestId, data.links);
   } catch (err) {
     showToast(`❌ ${err.message}`, 'error');
   }
+}
+
+function startAlertWizard(requestId, donors) {
+  wizardDonors = donors.filter(d => d.whatsapp_link);
+  wizardIndex  = 0;
+  wizardReqId  = requestId;
+
+  if (wizardDonors.length === 0) {
+    showToast('No donors with phone numbers found!', 'error');
+    return;
+  }
+
+  // Create wizard overlay
+  let overlay = document.getElementById('alertWizardOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'alertWizardOverlay';
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;
+      display:flex;align-items:center;justify-content:center;padding:20px;
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  overlay.style.display = 'flex';
+  renderWizardStep();
+}
+
+function renderWizardStep() {
+  const overlay = document.getElementById('alertWizardOverlay');
+  if (!overlay) return;
+
+  const total   = wizardDonors.length;
+  const current = wizardDonors[wizardIndex];
+  const progress = Math.round(((wizardIndex) / total) * 100);
+  const isLast  = wizardIndex === total - 1;
+
+  if (wizardIndex >= total) {
+    // All done!
+    overlay.innerHTML = `
+      <div style="background:#fff;border-radius:20px;padding:40px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="font-size:3.5rem;margin-bottom:12px">✅</div>
+        <h2 style="font-family:var(--font-display);font-size:1.6rem;color:#16a34a;margin-bottom:8px">All Done!</h2>
+        <p style="color:#6b7280;margin-bottom:24px">All <strong>${total}</strong> donors have been personally alerted on WhatsApp!</p>
+        <button onclick="closeAlertWizard()" style="background:linear-gradient(135deg,var(--red),var(--rose));color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:1rem;font-weight:700;cursor:pointer;width:100%">Close</button>
+      </div>`;
+    openBatchPanel(wizardReqId);
+    loadAdminRequests();
+    return;
+  }
+
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:20px;padding:32px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;color:var(--gray-800)">🩸 Alert Wizard</div>
+        <div style="font-size:.82rem;color:var(--gray-400);background:var(--gray-50);padding:4px 10px;border-radius:20px">${wizardIndex + 1} of ${total}</div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div style="height:6px;background:#f3f4f6;border-radius:99px;margin-bottom:24px;overflow:hidden">
+        <div style="height:100%;width:${progress}%;background:linear-gradient(90deg,var(--red),var(--rose));border-radius:99px;transition:width .4s ease"></div>
+      </div>
+
+      <!-- Donor Card -->
+      <div style="background:linear-gradient(135deg,#fff5f5,#fff);border:2px solid #fee2e2;border-radius:14px;padding:20px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+          <div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,var(--red),var(--rose));color:#fff;font-family:var(--font-display);font-size:1.2rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${current.name ? current.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2) : '?'}
+          </div>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:1.1rem;color:var(--gray-900)">${current.name || 'Unknown'}</div>
+            <div style="font-size:.82rem;color:var(--gray-500);margin-top:2px">
+              <strong style="color:var(--red)">${current.blood_group}</strong> · ${current.city} · ★ ${(current.trust_score || 0).toFixed(1)}
+            </div>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:8px;padding:10px 14px;font-size:.85rem;color:var(--gray-600)">
+          📱 <strong>${current.phone || 'No phone number'}</strong>
+        </div>
+      </div>
+
+      <!-- Action Message Preview -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;font-size:.78rem;color:#166534;margin-bottom:20px">
+        <strong>💬 Message will contain:</strong> Patient name, blood group, urgency level, hospital location + Google Maps link
+      </div>
+
+      <!-- Buttons -->
+      <button 
+        onclick="wizardSendAndNext()"
+        style="width:100%;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:12px;padding:16px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.97 0C5.366 0 0 5.366 0 11.97c0 2.111.555 4.093 1.523 5.815L0 24l6.368-1.492A11.923 11.923 0 0011.97 23.94C18.574 23.94 24 18.574 24 11.97 24 5.366 18.574 0 11.97 0zm0 21.888a9.903 9.903 0 01-5.031-1.375l-.361-.214-3.741.981.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.258c0-5.456 4.435-9.891 9.891-9.891 5.455 0 9.89 4.435 9.89 9.891 0 5.455-4.435 9.888-9.901 9.888z"/></svg>
+        ${isLast ? '📲 Send WhatsApp & Finish!' : '📲 Send WhatsApp & Next →'}
+      </button>
+
+      <button 
+        onclick="wizardSkip()"
+        style="width:100%;background:var(--gray-100);color:var(--gray-600);border:none;border-radius:10px;padding:12px;font-size:.88rem;font-weight:600;cursor:pointer"
+      >
+        Skip This Donor
+      </button>
+
+      <button 
+        onclick="closeAlertWizard()"
+        style="width:100%;background:transparent;color:var(--gray-400);border:none;padding:10px;font-size:.82rem;cursor:pointer;margin-top:4px"
+      >
+        ✕ Cancel
+      </button>
+    </div>`;
+}
+
+function wizardSendAndNext() {
+  const donor = wizardDonors[wizardIndex];
+  if (donor && donor.whatsapp_link) {
+    window.open(donor.whatsapp_link, '_blank');
+  }
+  wizardIndex++;
+  renderWizardStep();
+}
+
+function wizardSkip() {
+  wizardIndex++;
+  renderWizardStep();
+}
+
+function closeAlertWizard() {
+  const overlay = document.getElementById('alertWizardOverlay');
+  if (overlay) overlay.style.display = 'none';
+  wizardDonors = [];
+  wizardIndex  = 0;
+  wizardReqId  = null;
 }
 
 async function adminToggleUser(id, currentStatus) {
