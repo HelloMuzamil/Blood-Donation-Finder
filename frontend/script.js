@@ -1116,12 +1116,12 @@ async function sendBatch(requestId, batchNum) {
 }
 
 function startAlertWizard(requestId, donors) {
-  wizardDonors = donors.filter(d => d.whatsapp_link);
+  wizardDonors = donors;
   wizardIndex  = 0;
   wizardReqId  = requestId;
 
   if (wizardDonors.length === 0) {
-    showToast('No donors with phone numbers found!', 'error');
+    showToast('No donors found in this batch!', 'error');
     return;
   }
 
@@ -1156,13 +1156,15 @@ function renderWizardStep() {
       <div style="background:#fff;border-radius:20px;padding:40px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
         <div style="font-size:3.5rem;margin-bottom:12px">✅</div>
         <h2 style="font-family:var(--font-display);font-size:1.6rem;color:#16a34a;margin-bottom:8px">All Done!</h2>
-        <p style="color:#6b7280;margin-bottom:24px">All <strong>${total}</strong> donors have been personally alerted on WhatsApp!</p>
+        <p style="color:#6b7280;margin-bottom:24px">All <strong>${total}</strong> donors have been processed!</p>
         <button onclick="closeAlertWizard()" style="background:linear-gradient(135deg,var(--red),var(--rose));color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:1rem;font-weight:700;cursor:pointer;width:100%">Close</button>
       </div>`;
     openBatchPanel(wizardReqId);
     loadAdminRequests();
     return;
   }
+
+  const hasPhone = !!current.whatsapp_link;
 
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:20px;padding:32px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
@@ -1192,23 +1194,34 @@ function renderWizardStep() {
           </div>
         </div>
         <div style="background:#fff;border-radius:8px;padding:10px 14px;font-size:.85rem;color:var(--gray-600)">
-          📱 <strong>${current.phone || 'No phone number'}</strong>
+          📱 <strong>${current.phone || '<span style="color:red">No phone number registered</span>'}</strong>
         </div>
       </div>
 
-      <!-- Action Message Preview -->
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;font-size:.78rem;color:#166534;margin-bottom:20px">
-        <strong>💬 Message will contain:</strong> Patient name, blood group, urgency level, hospital location + Google Maps link
-      </div>
-
-      <!-- Buttons -->
-      <button 
-        onclick="wizardSendAndNext()"
-        style="width:100%;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:12px;padding:16px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.97 0C5.366 0 0 5.366 0 11.97c0 2.111.555 4.093 1.523 5.815L0 24l6.368-1.492A11.923 11.923 0 0011.97 23.94C18.574 23.94 24 18.574 24 11.97 24 5.366 18.574 0 11.97 0zm0 21.888a9.903 9.903 0 01-5.031-1.375l-.361-.214-3.741.981.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.258c0-5.456 4.435-9.891 9.891-9.891 5.455 0 9.89 4.435 9.89 9.891 0 5.455-4.435 9.888-9.901 9.888z"/></svg>
-        ${isLast ? '📲 Send WhatsApp & Finish!' : '📲 Send WhatsApp & Next →'}
-      </button>
+      ${hasPhone ? `
+        <!-- Action Message Preview -->
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;font-size:.78rem;color:#166534;margin-bottom:20px">
+          <strong>💬 Message will contain:</strong> Patient name, blood group, urgency level, hospital location + Google Maps link
+        </div>
+        
+        <button 
+          onclick="wizardSendAndNext()"
+          style="width:100%;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:12px;padding:16px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.97 0C5.366 0 0 5.366 0 11.97c0 2.111.555 4.093 1.523 5.815L0 24l6.368-1.492A11.923 11.923 0 0011.97 23.94C18.574 23.94 24 18.574 24 11.97 24 5.366 18.574 0 11.97 0zm0 21.888a9.903 9.903 0 01-5.031-1.375l-.361-.214-3.741.981.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.258c0-5.456 4.435-9.891 9.891-9.891 5.455 0 9.89 4.435 9.89 9.891 0 5.455-4.435 9.888-9.901 9.888z"/></svg>
+          ${isLast ? '📲 Send WhatsApp & Finish!' : '📲 Send WhatsApp & Next →'}
+        </button>
+      ` : `
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:.8rem;color:#b91c1c;margin-bottom:20px;text-align:center">
+          ⚠️ Cannot send WhatsApp message because this donor has no phone number.
+        </div>
+        <button 
+          onclick="wizardSkip()"
+          style="width:100%;background:var(--red);color:#fff;border:none;border-radius:12px;padding:16px;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px"
+        >
+          ${isLast ? 'Skip & Finish' : 'Skip & Next Donor →'}
+        </button>
+      `}
 
       <button 
         onclick="wizardSkip()"
