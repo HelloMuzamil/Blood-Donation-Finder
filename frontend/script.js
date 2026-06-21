@@ -8,8 +8,7 @@
    CONFIG
    ================================================================ */
 // In production (Vercel), API is on the same domain under /api
-// In local dev, point to the Express server directly
-const API_BASE = 'https://bloodconnect-api.onrender.com/api';
+const API_BASE = '/api';
 const DEFAULT_MAP_CENTER = [31.5204, 74.3587]; // Lahore
 const DEFAULT_MAP_ZOOM = 12;
 
