@@ -14,13 +14,10 @@ const register = async (req, res) => {
   try {
     const { first_name, last_name, email, password, phone, city, blood_group, role, latitude, longitude } = req.body;
 
-    // Validation
-    if (!first_name || !last_name || !email || !password || !blood_group || !city) {
-      return res.status(400).json({ success: false, message: 'All required fields must be filled.' });
-    }
-
+    // Validation handled by validateRegister middleware — sanitise inputs here
+    const cleanEmail = email.trim().toLowerCase();
     // Check if email already exists
-    const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
+    const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [cleanEmail]);
     if (existing.length > 0) {
       return res.status(409).json({ success: false, message: 'Email already registered.' });
     }
@@ -35,7 +32,7 @@ const register = async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO users (first_name, last_name, email, password, phone, city, blood_group, role, latitude, longitude)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [first_name, last_name, email, hashedPassword, phone || null, city, blood_group, role || 'donor', lat, lng]
+      [first_name.trim(), last_name.trim(), cleanEmail, hashedPassword, phone ? phone.trim() : null, city.trim(), blood_group.trim().toUpperCase(), role || 'donor', lat, lng]
     );
 
     // Create welcome notification
@@ -46,7 +43,7 @@ const register = async (req, res) => {
 
     // Generate JWT
     const token = jwt.sign(
-      { id: result.insertId, email, role: role || 'donor' },
+      { id: result.insertId, email: cleanEmail, role: role || 'donor' },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -56,7 +53,7 @@ const register = async (req, res) => {
       message: 'Account created successfully!',
       token,
       user: {
-        id: result.insertId, first_name, last_name, email, role: role || 'donor',
+        id: result.insertId, first_name: first_name.trim(), last_name: last_name.trim(), email: cleanEmail, role: role || 'donor',
         city, blood_group, latitude: lat, longitude: lng,
       }
     });
@@ -73,13 +70,11 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required.' });
-    }
+    // Validation handled by validateLogin middleware
+    const cleanEmail = email.trim().toLowerCase();
 
     // Find user
-    const [rows] = await db.query('SELECT * FROM users WHERE email = ? AND is_active = 1', [email]);
+    const [rows] = await db.query('SELECT * FROM users WHERE email = ? AND is_active = 1', [cleanEmail]);
     if (rows.length === 0) {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
