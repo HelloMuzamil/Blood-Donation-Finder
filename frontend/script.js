@@ -472,7 +472,7 @@ async function searchDonors() {
   if (coords) {
     params.set('lat', coords.lat);
     params.set('lng', coords.lng);
-    params.set('radius', city ? '10000' : '30');
+    params.set('radius', city ? '10000' : '150');
   }
 
   try {
