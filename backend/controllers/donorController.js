@@ -62,8 +62,8 @@ const searchDonors = async (req, res) => {
         ...d,
         trust_score: trust,
         distance_km,
-        initials: `${d.first_name[0]}${d.last_name[0]}`.toUpperCase(),
-        name: `${d.first_name} ${d.last_name}`,
+        initials: `${(d.first_name || 'U')[0]}${(d.last_name || 'N')[0]}`.toUpperCase(),
+        name: `${d.first_name || 'Unknown'} ${d.last_name || ''}`.trim(),
         maps_link: d.latitude && d.longitude
           ? `https://www.google.com/maps/search/?api=1&query=${d.latitude},${d.longitude}`
           : null,
