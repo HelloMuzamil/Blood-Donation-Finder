@@ -237,7 +237,7 @@ const validateLogin = (req, res, next) => {
 
   return (
     checkEmail(email, res)    ||
-    checkPassword(password, res) ||
+    (!trim(password) ? validationError(res, 'password', 'Password is required.') : null) ||
     next()
   );
 };
